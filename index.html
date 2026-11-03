@@ -1,0 +1,1141 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Livros</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#3A1F27">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Livros">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{
+  --paper:#FAF6EE;
+  --paper-alt:#F1EAD9;
+  --card:#FFFFFF;
+  --ink:#20242B;
+  --ink-soft:#6B7280;
+  --accent:#C1440E;
+  --accent-soft:#F1D9C9;
+  --good:#3F7D58;
+  --good-soft:#DCEBE1;
+  --line:#DED4BE;
+  --danger:#B0341F;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+html,body{margin:0;padding:0;height:100%;background:var(--paper);color:var(--ink);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;}
+body{display:flex;flex-direction:column;min-height:100vh;overscroll-behavior-y:contain;}
+.mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;}
+
+/* ---- Header ---- */
+header{background:var(--ink);color:var(--paper);padding:6px 14px;min-height:32px;display:flex;align-items:center;gap:8px;
+  position:sticky;top:0;z-index:20;}
+.logo-tag{width:15px;height:15px;background:var(--accent);border-radius:4px 4px 4px 0;transform:rotate(-8deg);position:relative;flex:none;}
+.logo-tag::after{content:'';position:absolute;top:3px;left:3px;width:4px;height:4px;border-radius:50%;background:var(--paper);}
+header h1{font-size:14px;margin:0;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.2;}
+header .sub{font-size:11px;color:#C8CCD6;margin-left:auto;text-align:right;line-height:1.2;}
+
+/* ---- Main / Views ---- */
+main{flex:1;padding:14px 14px 90px;max-width:640px;width:100%;margin:0 auto;}
+.view{display:none;animation:fade .15s ease;}
+.view.active{display:block;}
+@keyframes fade{from{opacity:0;transform:translateY(4px);}to{opacity:1;transform:translateY(0);}}
+
+h2.section-title{font-size:13px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-soft);
+  margin:18px 0 8px;font-weight:700;}
+h2.section-title:first-child{margin-top:0;}
+
+/* ---- Search bar ---- */
+.searchbar{display:flex;gap:8px;margin-bottom:12px;}
+.searchbar input[type=text], .searchbar input[type=date]{flex:1;}
+.search-wrap{position:relative;flex:1;display:flex;min-width:0;}
+.search-wrap input[type=text]{flex:1;padding-right:34px;}
+.search-clear{position:absolute;right:4px;top:50%;transform:translateY(-50%);display:none;
+  align-items:center;justify-content:center;width:26px;height:26px;border:none;background:none;
+  color:var(--ink-soft);font-size:15px;cursor:pointer;border-radius:50%;padding:0;line-height:1;}
+.search-wrap input[type=text]:not(:placeholder-shown) ~ .search-clear{display:flex;}
+.search-clear:active{background:var(--paper-alt);}
+input,select,textarea{font-family:inherit;font-size:15px;padding:10px 11px;border:1.5px solid var(--line);
+  border-radius:9px;background:var(--card);color:var(--ink);width:100%;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);}
+textarea{resize:vertical;min-height:56px;line-height:1.35;overflow-y:auto;}
+/* observações/comentários: Enter quebra linha, o campo cresce com o texto e a exibição preserva as quebras */
+.obs,.pre-wrap{white-space:pre-wrap;}
+label{display:block;font-size:12px;font-weight:700;color:var(--ink-soft);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em;}
+label:first-child{margin-top:0;}
+
+/* ---- Buttons ---- */
+button{font-family:inherit;cursor:pointer;border:none;}
+.btn{background:var(--ink);color:var(--paper);padding:11px 16px;border-radius:9px;font-weight:700;font-size:14px;}
+.btn-accent{background:var(--accent);color:#fff;}
+.btn-outline{background:transparent;border:1.5px solid var(--line);color:var(--ink);}
+.btn-danger{background:transparent;color:var(--danger);border:1.5px solid var(--danger);}
+.btn-sm{padding:7px 11px;font-size:12.5px;border-radius:7px;}
+.btn-xs{padding:4px 9px;font-size:11px;border-radius:6px;}
+.btn-preparos{flex:none;align-self:center;display:flex;flex-direction:column;align-items:center;gap:1px;
+  padding:6px 9px;border-radius:8px;line-height:1.15;font-size:13px;font-weight:700;}
+.btn-preparos small{font-size:9px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
+.btn-block{width:100%;}
+.fab{position:fixed;right:16px;bottom:78px;width:54px;height:54px;border-radius:50%;background:var(--accent);
+  color:#fff;font-size:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(193,68,14,.4);z-index:15;}
+
+/* ---- Cards / lists ---- */
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:9px;
+  display:flex;gap:11px;align-items:flex-start;cursor:pointer;transition:background .12s;}
+.card:active{background:var(--paper-alt);}
+.card img.thumb{width:46px;height:46px;border-radius:8px;object-fit:cover;flex:none;border:1px solid var(--line);}
+.thumb-ph{width:46px;height:46px;border-radius:8px;flex:none;background:var(--paper-alt);display:flex;align-items:center;
+  justify-content:center;font-size:18px;color:var(--ink-soft);}
+.card .body{flex:1;min-width:0;}
+.card .title{font-weight:700;font-size:15px;}
+.card .meta{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
+.card .obs{font-size:12.5px;color:var(--ink-soft);margin-top:4px;font-style:italic;}
+.card .actions{display:flex;gap:6px;margin-top:8px;}
+.card.selecionado{border-color:var(--accent);background:var(--accent-soft);}
+.card.comprado{opacity:.62;}
+.card.comprado .title{text-decoration:line-through;}
+.lista-hist{margin-top:8px;padding-top:6px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--ink-soft);}
+.lista-hist div{margin-top:2px;}
+.list-actions-row{display:flex;gap:6px;align-items:center;}
+.list-actions-row .btn{flex:1;white-space:nowrap;padding:6px 8px;font-size:11.5px;}
+.select-toggle-zone{width:30px;align-self:stretch;display:flex;align-items:center;justify-content:center;
+  background:transparent;border:none;flex:none;padding:0;margin:-2px 0;}
+.select-dot{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line);display:block;flex:none;}
+.select-toggle-zone.on .select-dot{background:var(--accent);border-color:var(--accent);}
+.badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-right:5px;}
+.badge-good{background:var(--good-soft);color:var(--good);}
+.badge-bad{background:var(--accent-soft);color:var(--accent);}
+
+/* price line = receipt style */
+.price-row{display:flex;align-items:baseline;gap:8px;}
+.price-row .name{font-weight:700;font-size:14.5px;min-width:0;}
+.price-row .dots{flex:1;border-bottom:1.5px dotted var(--line);height:0;margin-bottom:4px;}
+.price-row .val{font-weight:800;font-size:16px;white-space:nowrap;flex:none;}
+
+/* ---- Coluna foto + tag compacta (compra/não comprei) ---- */
+.thumb-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:none;width:46px;}
+.badge-mini{display:block;width:100%;box-sizing:border-box;font-size:9.5px;font-weight:700;line-height:1.15;
+  padding:2px 2px;border-radius:7px;text-align:center;white-space:normal;word-break:break-word;}
+.badge-mini.badge-good{background:var(--good-soft);color:var(--good);}
+.badge-mini.badge-bad{background:var(--accent-soft);color:var(--accent);}
+
+.empty{text-align:center;color:var(--ink-soft);padding:36px 12px;font-size:14px;}
+
+/* ---- Modal ---- */
+.overlay{position:fixed;inset:0;background:rgba(20,20,20,.45);display:none;align-items:flex-end;z-index:50;}
+.overlay.active{display:flex;}
+.sheet{background:var(--paper);width:100%;max-height:92vh;overflow-y:auto;border-radius:16px 16px 0 0;
+  padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:slideup .18s ease;}
+@keyframes slideup{from{transform:translateY(24px);opacity:0;}to{transform:translateY(0);opacity:1;}}
+.sheet h3{margin:0 0 12px;font-size:17px;}
+.sheet-actions{display:flex;gap:8px;margin-top:16px;}
+.photo-pick{display:flex;align-items:center;gap:10px;margin-top:6px;}
+.photo-pick img{width:64px;height:64px;border-radius:10px;object-fit:cover;border:1px solid var(--line);}
+.photo-pick .ph{width:64px;height:64px;border-radius:10px;background:var(--paper-alt);display:flex;align-items:center;
+  justify-content:center;color:var(--ink-soft);font-size:22px;}
+.check-row{display:flex;align-items:center;gap:8px;margin-top:10px;}
+.check-row input{width:auto;}
+
+/* ---- Modo leitura da receita (visual mais compacto, "de impressão") ---- */
+.view-heading{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
+  color:var(--ink-soft);margin:18px 0 6px;border-bottom:1px solid var(--line);padding-bottom:4px;}
+.view-secao{font-weight:700;margin:10px 0 2px;}
+.view-ing-linha{padding:3px 0;border-bottom:1px dashed var(--line);font-size:14px;cursor:pointer;}
+.view-clicavel{cursor:pointer;text-decoration:underline;text-decoration-style:dotted;}
+.view-clicavel-bloco{padding:3px 0;border-bottom:1px dashed var(--line);font-size:14px;cursor:pointer;}
+.view-ing-linha:last-child{border-bottom:none;}
+.view-etapa{padding:5px 0;border-bottom:1px dashed var(--line);}
+.view-etapa:last-child{border-bottom:none;}
+.view-etapa .num{color:var(--accent);font-weight:700;}
+/* ---- Tipografia dos modos leitura (receita, preparo, transformação): 3 estilos ----
+   Título        = .view-heading (12px, negrito, maiúsculas, cinza) — títulos de bloco
+   Texto normal  = 14px, cor padrão — tudo que está dentro de .leitura
+   Nota rodapé   = .view-nota / .hint / .obs dentro de .leitura (12px, cinza) — custo, observações de item/etapa, avisos
+   Todo modo leitura embrulha o conteúdo em <div class="leitura"> e usa só esses três. */
+.leitura{font-size:14px;line-height:1.4;}
+.view-nota,.leitura .hint,.leitura .obs{font-size:12px;line-height:1.35;color:var(--ink-soft);}
+.leitura .tr-read,.leitura .tr-resumo{font-size:inherit;}
+
+/* ---- Modal de seleção de ingrediente: ancorado no topo, título/busca fixos, lista rola por baixo ---- */
+#subOverlay{align-items:stretch;background:var(--paper);}
+#subSheet{width:100%;max-height:none;height:100%;border-radius:0;overflow-y:auto;padding-bottom:24px;}
+#ingPickerOverlay{align-items:flex-start;}
+#ingPickerSheet{height:92vh;display:flex;flex-direction:column;border-radius:0 0 16px 16px;overflow-y:hidden;}
+#ip-lista-wrap{flex:1;overflow-y:auto;margin-top:12px;}
+#ingPickerSheet .sheet-actions{flex:none;}
+.overlay.top-anchored{align-items:flex-start;}
+.overlay.top-anchored .sheet{height:92vh;border-radius:0 0 16px 16px;}
+
+/* ---- Foto ampliada (lightbox) ---- */
+.card img.thumb, .photo-pick img{cursor:zoom-in;}
+.lightbox{position:fixed;inset:0;background:rgba(10,10,10,.9);display:none;align-items:center;justify-content:center;
+  z-index:80;padding:24px;}
+.lightbox.active{display:flex;}
+.lightbox img{max-width:100%;max-height:100%;border-radius:12px;}
+.lightbox-close{position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;
+  background:rgba(255,255,255,.15);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;}
+
+/* ---- Bottom nav ---- */
+nav.tabs{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);
+  display:flex;z-index:20;padding-bottom:env(safe-area-inset-bottom);}
+nav.tabs button{flex:1;background:none;padding:9px 1px 7px;display:flex;flex-direction:column;align-items:center;
+  gap:2px;color:var(--ink-soft);font-size:9.5px;font-weight:700;}
+nav.tabs button .ic{font-size:17px;}
+nav.tabs button.active{color:var(--accent);}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.hint{font-size:12px;color:var(--ink-soft);margin-top:6px;}
+.chart-wrap{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;}
+
+/* ---- Modo escuro ---- */
+html.dark{
+  --paper:#14161B;
+  --paper-alt:#1D2027;
+  --card:#20242C;
+  --ink:#ECE7DA;
+  --ink-soft:#9098A6;
+  --accent:#E06B33;
+  --accent-soft:#3A2A20;
+  --good:#5BC98A;
+  --good-soft:#1D3327;
+  --line:#333743;
+  --danger:#E2685A;
+}
+html.dark header{background:#0D0F13;color:#ECE7DA;}
+
+/* ---- Configurações ---- */
+.cfg-theme-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+
+/* ---- Toast (alerta de bom preço) ---- */
+.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%) translateY(20px);max-width:88%;
+  background:var(--good);color:#fff;padding:12px 16px;border-radius:12px;font-size:13.5px;font-weight:600;
+  box-shadow:0 8px 20px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;
+  z-index:60;text-align:center;line-height:1.4;}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
+
+/* ---- Voltar ao topo ---- */
+.scroll-top-btn{position:fixed;left:14px;bottom:78px;width:38px;height:38px;border-radius:50%;
+  background:var(--ink);color:var(--paper);opacity:.55;display:none;align-items:center;justify-content:center;
+  font-size:16px;z-index:15;box-shadow:0 3px 10px rgba(0,0,0,.18);}
+.scroll-top-btn.show{display:flex;}
+.scroll-top-btn:active{opacity:.9;}
+
+/* ---- Tabelas compactas (transformação: rodadas; preparo: porções) ---- */
+.money-wrap{position:relative;}
+.money-wrap span{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:700;color:var(--ink-soft);pointer-events:none;}
+.money-wrap input{padding-left:36px;}
+.tr-form label{margin:8px 0 3px;}
+.tr-form label:first-child{margin-top:0;}
+.tr-form .sheet-actions{margin-top:12px;}
+.tr-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}
+.tr-table th,.tr-table td{border:1px solid var(--line);padding:3px 4px;text-align:center;vertical-align:middle;word-break:break-word;}
+.tr-table th{background:var(--paper-alt);font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);font-weight:700;padding:3px 2px;}
+.tr-table td.idx{width:42px;font-weight:700;color:var(--ink-soft);font-size:12px;}
+.tr-table td input{padding:6px 5px;font-size:14px;border-radius:6px;text-align:right;border-width:1px;}
+.tr-table tr.tot td{font-weight:800;background:var(--paper-alt);}
+.tr-table tr.pct td{font-size:11px;color:var(--ink-soft);line-height:1.25;}
+.tr-table .tr-r-del{display:block;margin:2px auto 0;background:none;color:var(--danger);font-size:12px;padding:0 4px;}
+.tr-table td.lbl{width:70px;text-align:left;font-weight:700;font-size:12px;color:var(--ink-soft);}
+.tr-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
+.tr-table td.sobra{font-size:12px;}
+.tr-table td.falta{font-size:12px;color:var(--danger);font-weight:700;}
+.tr-table tr.real td.lbl{color:var(--accent);}
+.tr-read{font-size:13px;line-height:1.35;}
+.tr-read .tr-table{margin-top:8px;}
+.tr-resumo{margin:6px 0 0;font-size:13px;line-height:1.5;}
+.tr-kv{display:flex;flex-direction:column;gap:1px;min-width:0;}
+.tr-etapa{border:1px solid var(--line);border-radius:10px;padding:8px 10px 10px;margin-top:8px;background:var(--card);}
+.tr-etapa-head{display:flex;justify-content:space-between;align-items:center;}
+.tr-etapa-head .tr-e-del{background:none;color:var(--danger);font-size:14px;padding:0 6px;}
+.tr-etapa input[type=text],.tr-etapa select{font-size:14px;}
+.tr-kv span{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);}
+.tr-kv b{font-size:14px;font-weight:700;}
+.pz-ing{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 10px;margin-top:8px;}
+.pz-ing .pz-nome{font-weight:700;font-size:14px;}
+.rod-pesar{font-size:14px;}
+.rod-pesar .rp-linha{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px dashed var(--line);}
+.rod-pesar .rp-linha:last-child{border-bottom:none;}
+.rod-pesar .rp-nome{flex:1;min-width:0;}
+.rod-pesar .rp-peso{font-weight:800;white-space:nowrap;}
+
+/* ---- Diálogos do app (substituem alert/confirm/prompt nativos, que mostram o endereço do site no título) ---- */
+.dlg-overlay{position:fixed;inset:0;background:rgba(20,20,20,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:24px;}
+.dlg-overlay.active{display:flex;}
+.dlg{background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:18px 16px 14px;width:100%;max-width:420px;box-shadow:0 12px 32px rgba(0,0,0,.35);}
+.dlg-msg{font-size:15px;line-height:1.45;max-height:60vh;overflow-y:auto;}
+.dlg input{margin-top:12px;}
+.dlg-actions{display:flex;gap:8px;margin-top:16px;}
+.dlg-actions .btn{flex:1;}
+
+/* ---- Duplicatas ---- */
+.dup-pair{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:9px;}
+.dup-pair .dup-sim{font-size:11.5px;color:var(--ink-soft);margin-top:4px;}
+
+.ajuda-p{margin:2px 0 4px!important;display:flex;align-items:flex-start;gap:6px}
+.ajuda-btn{flex:none;width:18px;height:18px;padding:0;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink-soft);font-size:11px;font-weight:700;line-height:16px;cursor:pointer}
+.ajuda-txt{flex:1;min-width:0}
+
+/* ============================================================
+   IDENTIDADE VISUAL DO APP LIVROS (sobrepõe as cores herdadas do Preços)
+   ============================================================ */
+:root{
+  --paper:#F6F0E4;
+  --paper-alt:#ECE3D0;
+  --card:#FFFDF8;
+  --ink:#2B2024;
+  --ink-soft:#75696B;
+  --accent:#7A2E3A;
+  --accent-soft:#EBD3D6;
+  --good:#3F7D58;
+  --good-soft:#DCEBE1;
+  --line:#D9CDB4;
+  --danger:#B0341F;
+}
+html.dark{
+  --paper:#171316;
+  --paper-alt:#201A1E;
+  --card:#271F24;
+  --ink:#EFE7DA;
+  --ink-soft:#A39A9C;
+  --accent:#D9798B;
+  --accent-soft:#3A2227;
+  --line:#3A3036;
+}
+header{background:#3A1F27;color:#F6F0E4;}
+html.dark header{background:#0E0B0D;}
+header .sub{color:#E6D2D6;}
+.logo-tag{background:#D9A441;}
+
+/* Atalhos (tela inicial alternativa) */
+.atalho-btn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);
+  border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:10px;font-size:16px;font-weight:700;color:var(--ink);}
+.atalho-btn .ic{font-size:26px;}
+.vazio{background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:20px 16px;text-align:center;color:var(--ink-soft);font-size:14px;}
+
+/* Aviso de backup (7 dias) */
+.aviso-backup{background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:13px;}
+.aviso-backup .btn{margin-top:8px;}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-tag"></div>
+  <h1 id="headerTitle">Livros</h1>
+  <div class="sub" id="headerSub"></div>
+</header>
+
+<main>
+  <div id="avisoBackup" class="aviso-backup" style="display:none"></div>
+
+  <!-- ================= TELA DE ATALHOS ================= -->
+  <section class="view" id="view-inicio">
+    <h2 class="section-title">Atalhos</h2>
+    <button class="atalho-btn" data-go="biblioteca" type="button"><span class="ic">📚</span>Biblioteca</button>
+    <button class="atalho-btn" data-go="desejos" type="button"><span class="ic">🎁</span>Lista de desejos</button>
+    <button class="atalho-btn" data-go="leituras" type="button"><span class="ic">📖</span>Leituras em andamento</button>
+    <button class="atalho-btn" data-go="pesquisa" type="button"><span class="ic">🔎</span>Pesquisa</button>
+  </section>
+
+  <!-- ================= BIBLIOTECA ================= -->
+  <section class="view" id="view-biblioteca">
+    <h2 class="section-title">Biblioteca</h2>
+    <div class="vazio">Nenhum livro ainda. O cadastro de livros chega na próxima versão.</div>
+  </section>
+
+  <!-- ================= LISTA DE DESEJOS ================= -->
+  <section class="view" id="view-desejos">
+    <h2 class="section-title">Lista de desejos</h2>
+    <div class="vazio">Nenhum livro na lista de desejos.</div>
+  </section>
+
+  <!-- ================= LEITURAS ================= -->
+  <section class="view" id="view-leituras">
+    <h2 class="section-title">Leituras</h2>
+    <div class="vazio">Nenhuma leitura em andamento.</div>
+  </section>
+
+  <!-- ================= PESQUISA ================= -->
+  <section class="view" id="view-pesquisa">
+    <h2 class="section-title">Pesquisa</h2>
+    <div class="vazio">A pesquisa chega em uma versão futura.</div>
+  </section>
+
+  <!-- ================= MAIS ================= -->
+  <section class="view" id="view-mais">
+    <h2 class="section-title">Mais</h2>
+    <button class="btn btn-outline btn-block" id="btnGoInicio" type="button" style="margin-bottom:10px;text-align:left">🏠 Tela de atalhos</button>
+    <button class="btn btn-outline btn-block" id="btnGoExportar" type="button" style="margin-bottom:10px;text-align:left">📤 Backup e restauração</button>
+    <button class="btn btn-outline btn-block" id="btnGoConfiguracoes" type="button" style="text-align:left">⚙️ Configurações</button>
+  </section>
+
+  <!-- ================= BACKUP ================= -->
+  <section class="view" id="view-exportar">
+    <button class="btn btn-outline btn-sm" id="btnVoltarMaisExportar" type="button" style="margin-bottom:12px">← Voltar</button>
+    <h2 class="section-title">Backup completo (.json)</h2>
+    <p class="hint">Guarda tudo: livros, autores, categorias, leituras, anotações, personagens, preços, capas, configurações e visões. Serve também para levar os dados a outro aparelho.</p>
+    <button class="btn btn-accent btn-block" id="btnExportJson" type="button">Exportar backup completo (.json)</button>
+    <p class="hint" id="backupUltimoTxt"></p>
+
+    <h2 class="section-title" style="margin-top:22px">Restaurar backup</h2>
+    <p class="hint">Atenção: restaurar APAGA os dados atuais e os substitui pelos do arquivo.</p>
+    <input type="file" accept=".json,application/json" id="fileImportJson" style="margin-bottom:8px">
+    <button class="btn btn-danger btn-block" id="btnImportJson" type="button">Restaurar backup completo (.json)</button>
+    <div id="import-json-result" class="hint"></div>
+
+    <h2 class="section-title" style="margin-top:22px">Sobre</h2>
+    <p class="hint"><b>Versão do app:</b> <span id="appVersaoTxt"></span><br><span id="appStorageTxt"></span></p>
+  </section>
+
+  <!-- ================= CONFIGURAÇÕES ================= -->
+  <section class="view" id="view-configuracoes">
+    <button class="btn btn-outline btn-sm" id="btnVoltarMaisConfig" type="button" style="margin-bottom:12px">← Voltar</button>
+    <h2 class="section-title">Configurações</h2>
+
+    <label>Página inicial</label>
+    <select id="cfg-tela-inicial">
+      <option value="leituras">Leituras em andamento</option>
+      <option value="atalhos">Tela de atalhos</option>
+    </select>
+
+    <label>Layout padrão dos livros</label>
+    <select id="cfg-layout-padrao">
+      <option value="grade">Grade (capas)</option>
+      <option value="lista">Lista</option>
+    </select>
+
+    <label>Tema</label>
+    <div class="grid2">
+      <button class="btn btn-outline btn-sm cfg-theme-btn" id="cfg-theme-light" type="button">☀️ Claro</button>
+      <button class="btn btn-outline btn-sm cfg-theme-btn" id="cfg-theme-dark" type="button">🌙 Escuro</button>
+    </div>
+  </section>
+
+</main>
+
+<button class="fab" id="fabAdd" style="display:none">+</button>
+
+<nav class="tabs">
+  <button class="tab-btn" data-view="biblioteca"><span class="ic">📚</span>Biblioteca</button>
+  <button class="tab-btn" data-view="desejos"><span class="ic">🎁</span>Desejos</button>
+  <button class="tab-btn" data-view="leituras"><span class="ic">📖</span>Leituras</button>
+  <button class="tab-btn" data-view="pesquisa"><span class="ic">🔎</span>Pesquisa</button>
+  <button class="tab-btn" data-view="mais"><span class="ic">⋯</span>Mais</button>
+</nav>
+
+<div class="overlay" id="overlay">
+  <div class="sheet" id="sheet"></div>
+</div>
+<div class="overlay" id="subOverlay" style="z-index:60">
+  <div class="sheet" id="subSheet"></div>
+</div>
+<div class="overlay" id="sub2Overlay" style="z-index:62">
+  <div class="sheet" id="sub2Sheet"></div>
+</div>
+<div class="overlay" id="pickerOverlay" style="z-index:65">
+  <div class="sheet" id="pickerSheet"></div>
+</div>
+
+<div class="lightbox" id="lightbox">
+  <button class="lightbox-close" id="lightboxClose">✕</button>
+  <img id="lightboxImg" src="">
+</div>
+
+<script>
+/* ============================================================
+   BANCO DE DADOS (IndexedDB) - 100% local / offline
+   Nome e prefixos PRÓPRIOS do app Livros: o Preços roda no mesmo domínio (github.io) e compartilha localStorage.
+   ============================================================ */
+const DB_NAME = 'livros_db';
+const DB_VERSION = 1;
+const LS_PREFIX = 'livros_';
+let db;
+/* Todos os stores usam {keyPath:'id', autoIncrement:true}. Criados em onupgradeneeded com if(!contains). */
+const STORES = ['livros','autores','categorias','subcategorias','leituras','progressos','anotacoes','personagens','precos','locais','visoes'];
+function openDB(){
+  return new Promise((resolve,reject)=>{
+    const req = indexedDB.open(DB_NAME, DB_VERSION);
+    req.onupgradeneeded = (e)=>{
+      const d = e.target.result;
+      STORES.forEach(n=>{ if(!d.objectStoreNames.contains(n)) d.createObjectStore(n,{keyPath:'id',autoIncrement:true}); });
+    };
+    req.onsuccess = (e)=>{ db = e.target.result; resolve(db); };
+    req.onerror = (e)=> reject(e);
+  });
+}
+function tx(store, mode='readonly'){
+  return db.transaction(store, mode).objectStore(store);
+}
+function getAll(store){
+  return new Promise((res,rej)=>{
+    const r = tx(store).getAll();
+    r.onsuccess = ()=>res(r.result);
+    r.onerror = rej;
+  });
+}
+function putRecord(store, obj){
+  return new Promise((res,rej)=>{
+    const r = tx(store,'readwrite').put(obj);
+    r.onsuccess = ()=>res(r.result);
+    r.onerror = rej;
+  });
+}
+function deleteRecord(store, id){
+  return new Promise((res,rej)=>{
+    const r = tx(store,'readwrite').delete(id);
+    r.onsuccess = ()=>res();
+    r.onerror = rej;
+  });
+}
+
+/* Cache em memória (recarregado após cada mudança) */
+let LIVROS=[], AUTORES=[], CATS=[], SUBCATS=[], LEITURAS=[], PROGRESSOS=[], ANOTACOES=[], PERSONAGENS=[], PRECOS=[], LOCAIS=[], VISOES=[];
+const porNome = (a,b)=> (a.nome||'').localeCompare(b.nome||'');
+async function reloadAll(){
+  LIVROS = (await getAll('livros')).sort((a,b)=> (a.titulo||'').localeCompare(b.titulo||''));
+  AUTORES = (await getAll('autores')).sort(porNome);
+  CATS = (await getAll('categorias')).sort(porNome);
+  SUBCATS = (await getAll('subcategorias')).sort(porNome);
+  LEITURAS = await getAll('leituras');
+  PROGRESSOS = await getAll('progressos');
+  ANOTACOES = await getAll('anotacoes');
+  PERSONAGENS = (await getAll('personagens')).sort(porNome);
+  PRECOS = await getAll('precos');
+  LOCAIS = (await getAll('locais')).sort(porNome);
+  VISOES = (await getAll('visoes')).sort((a,b)=> (a.ordem||0)-(b.ordem||0) || a.id-b.id);
+}
+
+/* ============================================================
+   CONFIGURAÇÕES (salvas no localStorage, prefixo livros_cfg_ => entram no backup)
+   ============================================================ */
+const CONFIG_DEFAULTS = {
+  telaInicial: 'leituras',   // 'leituras' | 'atalhos'
+  layoutPadrao: 'grade'      // 'grade' | 'lista'
+};
+function loadConfig(){
+  const cfg = {};
+  Object.keys(CONFIG_DEFAULTS).forEach(k=>{
+    const raw = localStorage.getItem(LS_PREFIX+'cfg_'+k);
+    const def = CONFIG_DEFAULTS[k];
+    if(raw===null){ cfg[k]=def; return; }
+    if(typeof def==='number') cfg[k]=Number(raw);
+    else if(typeof def==='boolean') cfg[k]=(raw==='true');
+    else cfg[k]=raw;
+  });
+  return cfg;
+}
+let CONFIG = loadConfig();
+function setConfigValue(key, value){
+  CONFIG[key] = value;
+  localStorage.setItem(LS_PREFIX+'cfg_'+key, String(value));
+}
+function fillConfiguracoesForm(){
+  document.getElementById('cfg-tela-inicial').value = CONFIG.telaInicial;
+  document.getElementById('cfg-layout-padrao').value = CONFIG.layoutPadrao;
+}
+
+/* ============================================================
+   UTILS
+   ============================================================ */
+function stampArquivo(){
+  const d = new Date();
+  const p2 = n => String(n).padStart(2,'0');
+  return todayLocal() + '_' + p2(d.getHours()) + 'h' + p2(d.getMinutes());
+}
+function todayLocal(){
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth()+1).padStart(2,'0');
+  const day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`;
+}
+function fmtDateBR(iso){ if(!iso) return ''; const [y,m,d]=iso.split('-'); return `${d}/${m}/${y}`; }
+function diasDesde(dataIso){
+  const d1 = new Date(dataIso+'T00:00:00');
+  const d0 = new Date(todayLocal()+'T00:00:00');
+  return Math.round((d0-d1)/(24*3600*1000));
+}
+function semAcento(s){
+  return (s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+}
+function normalizeNome(s){
+  return (s||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9\s]/g,' ')
+    .replace(/\s+/g,' ')
+    .trim();
+}
+function levenshtein(a,b){
+  const m=a.length, n=b.length;
+  if(m===0) return n;
+  if(n===0) return m;
+  const dp = Array.from({length:m+1},()=>new Array(n+1).fill(0));
+  for(let i=0;i<=m;i++) dp[i][0]=i;
+  for(let j=0;j<=n;j++) dp[0][j]=j;
+  for(let i=1;i<=m;i++){
+    for(let j=1;j<=n;j++){
+      dp[i][j] = a[i-1]===b[j-1] ? dp[i-1][j-1] : 1+Math.min(dp[i-1][j], dp[i][j-1], dp[i-1][j-1]);
+    }
+  }
+  return dp[m][n];
+}
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function optionsHTML(list, selectedId, rotulo){
+  return list.map(x=>`<option value="${x.id}" ${selectedId!==undefined && x.id===selectedId?'selected':''}>${escapeHtml(rotulo?rotulo(x):x.nome)}</option>`).join('');
+}
+function resizeImage(file, maxSize=640, quality=0.72){
+  return new Promise((resolve,reject)=>{
+    const reader = new FileReader();
+    reader.onload = ()=>{
+      const img = new Image();
+      img.onload = ()=>{
+        let w=img.width, h=img.height;
+        if(w>h && w>maxSize){ h = h*(maxSize/w); w=maxSize; }
+        else if(h>=w && h>maxSize){ w = w*(maxSize/h); h=maxSize; }
+        const canvas = document.createElement('canvas');
+        canvas.width=w; canvas.height=h;
+        canvas.getContext('2d').drawImage(img,0,0,w,h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.onerror = reject;
+      img.src = reader.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+
+/* ---- Máscara de valor monetário (centavos) ---- */
+function attachMoneyMask(inputEl, initialValue){
+  inputEl.setAttribute('type','text');
+  inputEl.setAttribute('inputmode','numeric');
+  inputEl.setAttribute('autocomplete','off');
+  function render(digits){
+    digits = digits.replace(/^0+(?=\d)/,'');
+    if(digits==='') digits='0';
+    inputEl.dataset.cents = digits;
+    const cents = parseInt(digits,10);
+    const reais = Math.floor(cents/100).toLocaleString('pt-BR');
+    const centavos = String(cents%100).padStart(2,'0');
+    inputEl.value = reais + ',' + centavos;
+  }
+  inputEl.addEventListener('input', ()=>{
+    const digits = inputEl.value.replace(/\D/g,'');
+    render(digits);
+  });
+  if(initialValue!=null && !isNaN(initialValue)){
+    render(String(Math.round(initialValue*100)));
+  } else {
+    inputEl.dataset.cents = '0';
+    inputEl.value = '';
+  }
+}
+function getMoneyValue(inputEl){
+  return parseInt(inputEl.dataset.cents||'0',10)/100;
+}
+
+/* ---- Máscara de quantidade (separador de milhar com ponto, decimal com vírgula) ---- */
+function attachQtyMask(inputEl, initialValue){
+  inputEl.setAttribute('type','text');
+  inputEl.setAttribute('inputmode','decimal');
+  inputEl.setAttribute('autocomplete','off');
+  function formatRaw(raw){
+    let [intPart, decPart] = raw.split(',');
+    intPart = intPart.replace(/^0+(?=\d)/,'');
+    if(intPart==='') intPart = '0';
+    const comMilhar = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    return decPart!==undefined ? comMilhar+','+decPart : comMilhar;
+  }
+  function render(raw){
+    inputEl.dataset.raw = raw;
+    inputEl.value = raw==='' ? '' : formatRaw(raw);
+  }
+  inputEl.addEventListener('input', ()=>{
+    let v = inputEl.value.replace(/[^\d,]/g,'');
+    const firstComma = v.indexOf(',');
+    if(firstComma!==-1){
+      v = v.slice(0,firstComma+1) + v.slice(firstComma+1).replace(/,/g,'');
+      const parts = v.split(',');
+      v = parts[0] + ',' + parts[1].slice(0,3);
+    }
+    render(v);
+  });
+  if(initialValue!=null && initialValue!==''){
+    const num = Number(initialValue);
+    if(!isNaN(num)){
+      const s = String(num);
+      let [ip, dp] = s.split('.');
+      dp = dp ? dp.slice(0,3) : undefined;
+      render(dp!==undefined ? ip+','+dp : ip);
+      return;
+    }
+  }
+  render('');
+}
+function getQtyValue(inputEl){
+  const raw = inputEl.dataset.raw;
+  if(raw==null || raw==='') return null;
+  const num = Number(raw.replace(',','.'));
+  return isNaN(num) ? null : num;
+}
+/* Atualiza um campo com máscara de quantidade programaticamente (ex: recalcular "produzir quanto" quando a escala muda),
+   mantendo dataset.raw em sincronia (senão getQtyValue leria um valor desatualizado). */
+function setQtyValue(inputEl, value){
+  if(value==null || isNaN(value)){ inputEl.dataset.raw=''; inputEl.value=''; return; }
+  const s = String(Number(value));
+  let [ip, dp] = s.split('.');
+  dp = dp ? dp.slice(0,3) : undefined;
+  inputEl.dataset.raw = dp!==undefined ? ip+','+dp : ip;
+  let intPart = ip.replace(/^0+(?=\d)/,''); if(intPart==='') intPart='0';
+  const comMilhar = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  inputEl.value = dp!==undefined ? comMilhar+','+dp : comMilhar;
+}
+
+/* ============================================================
+   DIÁLOGOS DO APP (avisar / confirmar / perguntar)
+   Substituem alert/confirm/prompt nativos (no navegador o nativo mostra o endereço do site em destaque).
+   Todos devolvem Promise: confirmar -> true/false; perguntar -> texto ou null; avisar -> sem retorno útil
+   (não precisa de await: o código que chama costuma só dar return em seguida).
+   O botão voltar do celular fecha o diálogo como "cancelar".
+   ============================================================ */
+let _dlg = null;   // {resolve, cancelValor, historico}
+function _dlgEl(){
+  let el = document.getElementById('dlgOverlay');
+  if(!el){
+    el = document.createElement('div');
+    el.id = 'dlgOverlay'; el.className = 'dlg-overlay';
+    el.innerHTML = '<div class="dlg" role="dialog" aria-modal="true"><div class="dlg-msg pre-wrap" id="dlgMsg"></div><input type="text" id="dlgInput" style="display:none" autocomplete="off"><div class="dlg-actions" id="dlgActions"></div></div>';
+    document.body.appendChild(el);
+    el.addEventListener('click', e=>{ if(e.target===el) _dlgFechar(_dlg ? _dlg.cancelValor : undefined); });
+    document.addEventListener('keydown', e=>{ if(e.key==='Escape' && _dlg) _dlgFechar(_dlg.cancelValor); });
+  }
+  return el;
+}
+function dialogoAberto(){ return !!_dlg; }
+function _dlgFechar(resultado){
+  if(!_dlg) return;
+  const d = _dlg; _dlg = null;
+  _dlgEl().classList.remove('active');
+  if(d.historico) consumeModalHistory();
+  d.resolve(resultado);
+}
+function fecharDialogoDom(){          // chamado pelo popstate: o histórico já foi consumido pelo próprio voltar
+  if(!_dlg) return;
+  const d = _dlg; _dlg = null;
+  _dlgEl().classList.remove('active');
+  d.resolve(d.cancelValor);
+}
+function _dlgAbrir({msg, tipo, valor, semHistorico}){
+  return new Promise(resolve=>{
+    if(_dlg){ const velho = _dlg; _dlg = null; if(velho.historico) consumeModalHistory(); velho.resolve(velho.cancelValor); }
+    const el = _dlgEl();
+    const input = document.getElementById('dlgInput');
+    const acoes = document.getElementById('dlgActions');
+    document.getElementById('dlgMsg').textContent = msg;
+    const ehPergunta = tipo==='prompt';
+    input.style.display = ehPergunta ? 'block' : 'none';
+    input.value = ehPergunta && valor!=null ? valor : '';
+    const cancelValor = tipo==='confirm' ? false : (tipo==='prompt' ? null : undefined);
+    acoes.innerHTML = (tipo==='alert' ? '' : '<button type="button" class="btn btn-outline" id="dlgCancel">Cancelar</button>') +
+                      '<button type="button" class="btn btn-accent" id="dlgOk">OK</button>';
+    _dlg = {resolve, cancelValor, historico: !semHistorico};
+    document.getElementById('dlgOk').addEventListener('click', ()=> _dlgFechar(tipo==='confirm' ? true : (tipo==='prompt' ? input.value : undefined)));
+    const c = document.getElementById('dlgCancel');
+    if(c) c.addEventListener('click', ()=> _dlgFechar(cancelValor));
+    input.onkeydown = e=>{ if(e.key==='Enter'){ e.preventDefault(); _dlgFechar(input.value); } };
+    el.classList.add('active');
+    if(!semHistorico) pushModalHistory();
+    if(ehPergunta) setTimeout(()=>{ input.focus(); input.select(); }, 30);
+  });
+}
+function avisar(msg){ return _dlgAbrir({msg, tipo:'alert'}); }
+function confirmar(msg, opts){ return _dlgAbrir({msg, tipo:'confirm', semHistorico: !!(opts && opts.semHistorico)}); }
+function perguntar(msg, valor){ return _dlgAbrir({msg, tipo:'prompt', valor}); }
+/* ---- Botão voltar do celular: volta pelo fluxo de telas em vez de sair do app ----
+   Pilha lógica (navStack) espelhada em entradas de history (as entradas físicas são intercambiáveis;
+   só a contagem precisa bater). Dois tipos de entrada:
+   - {k:'modal'}: sheet, seletor de ingrediente, foto ampliada ou diálogo aberto;
+   - {k:'view', from, y}: troca de tela (aba/tela cheia); guarda a tela de origem e a rolagem dela.
+   O voltar do celular (popstate) desempilha a entrada do topo: fecha o modal ou volta pra tela anterior.
+   Sem nada empilhado, pergunta se quer mesmo sair antes de deixar o navegador fechar o app. */
+let navStack = [];
+let suppressPopstateCount = 0;   // quantos popstate gerados por history.back() do próprio app ainda vão chegar
+let aposHistorico = [];          // ações adiadas até os history.back() em andamento terminarem
+const NAV_MAX_VIEWS = 40;
+function limitarNav(){
+  let n = navStack.filter(e=>e.k==='view').length;
+  while(n>NAV_MAX_VIEWS){ navStack.splice(navStack.findIndex(e=>e.k==='view'),1); n--; }
+}
+function pushModalHistory(){
+  navStack.push({k:'modal'});
+  history.pushState({nav:1}, '');
+}
+function consumeModalHistory(){
+  const i = navStack.map(e=>e.k).lastIndexOf('modal');
+  if(i>=0){
+    navStack.splice(i,1);
+    suppressPopstateCount++;
+    history.back();
+  }
+}
+function executarAposHistorico(fn){
+  if(suppressPopstateCount>0) aposHistorico.push(fn); else fn();
+}
+/* Camada de sheet que o voltar fecharia agora (null se há diálogo/foto/seletor por cima ou nenhuma aberta). */
+function camadaTopoAtiva(){
+  if(dialogoAberto() || lightbox.classList.contains('active') || pickerOverlay.classList.contains('active')) return null;
+  return [camadaSub2, camadaSub, camadaMain].find(c=>c.ativa()) || null;
+}
+window.addEventListener('popstate', ()=>{
+  if(suppressPopstateCount>0){
+    suppressPopstateCount--;
+    if(suppressPopstateCount===0 && aposHistorico.length){ const fns = aposHistorico; aposHistorico = []; setTimeout(()=>fns.forEach(f=>f()), 0); }
+    return;
+  }
+  const topo = navStack[navStack.length-1];
+  if(!topo){
+    confirmar('Sair do Livros?\n\nToque em OK pra fechar o app.', {semHistorico:true}).then(ok=>{
+      // OK: deixa o back seguinte (ou o próprio navegador/WebView) sair de fato
+      if(!ok) history.pushState({guard:true}, '');
+    });
+    return;
+  }
+  if(topo.k==='modal'){
+    const camada = camadaTopoAtiva();
+    if(camada && camada.precisaConfirmar()){
+      // há alterações não salvas: desfaz o voltar e pergunta antes de fechar
+      history.pushState({nav:1}, '');
+      camada.confirmarDescarte().then(ok=>{ if(ok) camada.fecharAgora(); });
+      return;
+    }
+    navStack.pop();
+    if(dialogoAberto()) fecharDialogoDom();
+    else if(lightbox.classList.contains('active')) closeLightboxDom();
+    else if(pickerOverlay.classList.contains('active')) closePickerDom();
+    else if(sub2Overlay.classList.contains('active')) closeSub2SheetDom();
+    else if(subOverlay.classList.contains('active')) closeSubSheetDom();
+    else if(overlay.classList.contains('active')) closeSheetDom();
+  } else {
+    navStack.pop();
+    switchView(topo.from, {semHistorico:true, restoreY:topo.y});
+  }
+});
+history.pushState({guard:true}, '');
+
+/* ---- Camadas de sheet (principal, sub nível 1, sub nível 2): mesma mecânica, criada por uma fábrica.
+   Sub-sheet empilha sobre o sheet principal sem fechá-lo (ex: ver/editar uma transformação a partir
+   do formulário de preparo); sub2 empilha sobre o sub (ex: editor granular de ingrediente). ---- */
+function criarCamada(overlayId, sheetId){
+  const ov = document.getElementById(overlayId);
+  const sh = document.getElementById(sheetId);
+  const c = {
+    overlay: ov, sheet: sh,
+    dirty: false,      // o usuário mexeu num formulário (tem botão *-save) desta camada
+    salvando: false,   // último clique foi num botão de ação (salvar/excluir...), não em Cancelar/✕
+    ativa(){ return ov.classList.contains('active'); },
+    abrir(html, opts){
+      const jaAberto = c.ativa();
+      c.dirty = false; c.salvando = false;
+      sh.innerHTML = html;
+      ov.classList.add('active');
+      ov.classList.toggle('top-anchored', !!(opts && opts.topAnchored));
+      ov.scrollTop = 0;
+      sh.scrollTop = 0;
+      if(!jaAberto) pushModalHistory();   // reabrir por cima de uma camada já aberta não empilha outra entrada
+    },
+    fecharDom(){ ov.classList.remove('active'); ov.classList.remove('top-anchored'); sh.innerHTML=''; c.dirty=false; c.salvando=false; },
+    fecharAgora(){
+      const wasActive = c.ativa();
+      c.fecharDom();
+      if(wasActive) consumeModalHistory();
+    },
+    precisaConfirmar(){ return c.ativa() && c.dirty; },
+    confirmarDescarte(){
+      return confirmar('Há alterações não salvas.\n\nOK = sair e descartar\nCancelar = continuar editando');
+    },
+    /* Fechamento pedido pelo código: Cancelar/✕ perguntam se houver alterações; salvar/excluir (salvando=true) fecham direto. */
+    fechar(){
+      if(c.precisaConfirmar() && !c.salvando){
+        c.confirmarDescarte().then(ok=>{ if(ok) c.fecharAgora(); });
+        return;
+      }
+      c.fecharAgora();
+    }
+  };
+  const marcarAlterado = (e)=>{ if(e.isTrusted && sh.querySelector('[id$="-save"]')){ c.dirty = true; c.salvando = false; } };
+  sh.addEventListener('input', marcarAlterado, true);
+  sh.addEventListener('change', marcarAlterado, true);
+  sh.addEventListener('click', (e)=>{
+    const b = e.target.closest('button');
+    if(b) c.salvando = !/-(cancel|fechar|close)$/.test(b.id);
+  }, true);
+  ov.addEventListener('click', (e)=>{
+    if(e.target!==ov) return;
+    if(c.precisaConfirmar()) c.confirmarDescarte().then(ok=>{ if(ok) c.fecharAgora(); });
+    else c.fecharAgora();
+  });
+  return c;
+}
+const camadaMain = criarCamada('overlay','sheet');
+const camadaSub  = criarCamada('subOverlay','subSheet');
+const camadaSub2 = criarCamada('sub2Overlay','sub2Sheet');
+const overlay = camadaMain.overlay, sheet = camadaMain.sheet;
+const subOverlay = camadaSub.overlay, subSheet = camadaSub.sheet;
+const sub2Overlay = camadaSub2.overlay, sub2Sheet = camadaSub2.sheet;
+const openSheet = camadaMain.abrir, closeSheetDom = camadaMain.fecharDom, closeSheet = camadaMain.fechar;
+const openSubSheet = camadaSub.abrir, closeSubSheetDom = camadaSub.fecharDom, closeSubSheet = camadaSub.fechar;
+const openSub2Sheet = camadaSub2.abrir, closeSub2SheetDom = camadaSub2.fecharDom, closeSub2Sheet = camadaSub2.fechar;
+/* Abre/fecha no nível certo da pilha: level pode ser falsy (sheet principal), true (sub-sheet nível 1)
+   ou 'sub2' (nível 2) — usado por telas que podem ser chamadas em qualquer um dos 3 níveis (ex: transformação). */
+function openLayer(html, level, opts){
+  if(level==='sub2') openSub2Sheet(html, opts);
+  else if(level) openSubSheet(html, opts);
+  else openSheet(html, opts);
+}
+function closeLayer(level){
+  if(level==='sub2') closeSub2Sheet();
+  else if(level) closeSubSheet();
+  else closeSheet();
+}
+
+
+/* Seletor sobreposto (z-index 65): reservado para seletores de autores/categorias nas próximas versões. */
+const pickerOverlay = document.getElementById('pickerOverlay');
+function closePickerDom(){ pickerOverlay.classList.remove('active'); document.getElementById('pickerSheet').innerHTML=''; }
+
+/* ---- Foto ampliada (lightbox) ---- */
+const lightbox = document.getElementById('lightbox');
+const lightboxImg = document.getElementById('lightboxImg');
+function openLightbox(src){ const jaAberto = lightbox.classList.contains('active'); lightboxImg.src = src; lightbox.classList.add('active'); if(!jaAberto) pushModalHistory(); }
+function closeLightboxDom(){ lightbox.classList.remove('active'); lightboxImg.src=''; }
+function closeLightbox(){
+  const wasActive = lightbox.classList.contains('active');
+  closeLightboxDom();
+  if(wasActive) consumeModalHistory();
+}
+document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
+lightbox.addEventListener('click', (e)=>{ if(e.target===lightbox) closeLightbox(); });
+document.body.addEventListener('click', (e)=>{
+  const img = e.target.closest('img.thumb, .photo-pick img');
+  if(img && img.src){ e.stopPropagation(); openLightbox(img.src); }
+}, true);
+
+
+/* ============================================================
+   NAVEGAÇÃO ENTRE TELAS
+   Barra inferior (4 áreas + Mais) = telas RAIZ: zeram a pilha. Atalhos dentro das telas empilham.
+   ============================================================ */
+const TITULOS = {inicio:'Atalhos', biblioteca:'Biblioteca', desejos:'Lista de desejos', leituras:'Leituras', pesquisa:'Pesquisa',
+  mais:'Mais', exportar:'Backup', configuracoes:'Configurações'};
+const VIEWS_DO_MAIS = ['inicio','exportar','configuracoes'];
+let viewAtual = null;
+let currentTab = null;
+function zerarPilhaTelas(){
+  if(navStack.some(e=>e.k==='modal')) return;
+  const n = navStack.filter(e=>e.k==='view').length;
+  if(!n) return;
+  const pendentes = aposHistorico.length;
+  aposHistorico = [];
+  navStack = [];
+  const fisicas = n - pendentes;
+  if(fisicas>0){ suppressPopstateCount++; history.go(-fisicas); }
+}
+/* opts.raiz: tela de menu (zera a pilha); opts.semHistorico: não empilha (usado pelo voltar do celular);
+   opts.restoreY: rolagem a restaurar. */
+function switchView(name, opts){
+  opts = opts || {};
+  const anterior = viewAtual;
+  if(opts.raiz){
+    zerarPilhaTelas();
+  } else if(!opts.semHistorico && anterior && anterior!==name){
+    const topo = navStack[navStack.length-1];
+    if(topo && topo.k==='view' && topo.from===name){
+      navStack.pop(); suppressPopstateCount++; history.back();
+      opts = {...opts, restoreY: topo.y};
+    } else {
+      navStack.push({k:'view', from:anterior, y:window.scrollY});
+      limitarNav();
+      executarAposHistorico(()=> history.pushState({nav:1}, ''));
+    }
+  }
+  viewAtual = name;
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  const tabName = VIEWS_DO_MAIS.includes(name) ? 'mais' : name;
+  document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===tabName));
+  document.getElementById('headerSub').textContent = TITULOS[name] || '';
+  currentTab = name;
+  renderCurrent();
+  if(opts.restoreY!=null) requestAnimationFrame(()=> window.scrollTo(0, opts.restoreY));
+  else window.scrollTo(0,0);
+}
+/* Cada tela ganha seu render() nas próximas versões. */
+function renderCurrent(){
+  renderAvisoBackup();
+  if(currentTab==='exportar') renderBackupInfo();
+}
+
+document.querySelectorAll('.tab-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=> switchView(btn.dataset.view, {raiz:true}));
+});
+document.querySelectorAll('.atalho-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=> switchView(btn.dataset.go));   // atalho dentro de tela: empilha
+});
+document.getElementById('btnGoInicio').addEventListener('click', ()=> switchView('inicio', {raiz:true}));
+document.getElementById('btnGoExportar').addEventListener('click', ()=> switchView('exportar', {raiz:true}));
+document.getElementById('btnGoConfiguracoes').addEventListener('click', ()=> switchView('configuracoes', {raiz:true}));
+document.getElementById('btnVoltarMaisExportar').addEventListener('click', ()=> switchView('mais', {raiz:true}));
+document.getElementById('btnVoltarMaisConfig').addEventListener('click', ()=> switchView('mais', {raiz:true}));
+document.getElementById('cfg-tela-inicial').addEventListener('change', e=> setConfigValue('telaInicial', e.target.value));
+document.getElementById('cfg-layout-padrao').addEventListener('change', e=> setConfigValue('layoutPadrao', e.target.value));
+
+/* ============================================================
+   TEMA CLARO / ESCURO
+   ============================================================ */
+function refreshThemeButtons(){
+  const isDark = document.documentElement.classList.contains('dark');
+  const btnLight = document.getElementById('cfg-theme-light');
+  const btnDark = document.getElementById('cfg-theme-dark');
+  if(btnLight) btnLight.classList.toggle('active', !isDark);
+  if(btnDark) btnDark.classList.toggle('active', isDark);
+}
+function applyTheme(theme){
+  document.documentElement.classList.toggle('dark', theme==='dark');
+  refreshThemeButtons();
+}
+applyTheme(localStorage.getItem(LS_PREFIX+'theme') || 'light');
+document.getElementById('cfg-theme-light').addEventListener('click', ()=>{
+  localStorage.setItem(LS_PREFIX+'theme', 'light'); applyTheme('light');
+});
+document.getElementById('cfg-theme-dark').addEventListener('click', ()=>{
+  localStorage.setItem(LS_PREFIX+'theme', 'dark'); applyTheme('dark');
+});
+
+/* ============================================================
+   BACKUP COMPLETO JSON (inclui capas) + ALERTA DE 7 DIAS
+   Exporta TODOS os stores do banco e todas as chaves livros_* do localStorage: nada é listado à mão.
+   ============================================================ */
+const BACKUP_ALERTA_DIAS = 7;
+function ultimoBackupData(){ return localStorage.getItem(LS_PREFIX+'ultimo_backup'); }   // 'AAAA-MM-DD'
+async function temDadosParaProteger(){
+  for(const n of ['livros','autores','categorias','leituras','anotacoes','personagens','precos']){
+    if((await getAll(n)).length) return true;
+  }
+  return false;
+}
+async function renderAvisoBackup(){
+  const el = document.getElementById('avisoBackup');
+  if(!el || !db) return;
+  const ult = ultimoBackupData();
+  const base = ult || localStorage.getItem(LS_PREFIX+'primeiro_uso') || todayLocal();
+  const dias = diasDesde(base);
+  if(dias < BACKUP_ALERTA_DIAS || !(await temDadosParaProteger())){ el.style.display = 'none'; return; }
+  el.innerHTML = (ult ? `Último backup há <b>${dias} dias</b> (${fmtDateBR(ult)}).` : `Você ainda <b>não fez backup</b> (usa o app há ${dias} dias).`)
+    + `<br><button class="btn btn-accent btn-sm" id="btnAvisoBackup" type="button">Fazer backup agora</button>`;
+  el.style.display = 'block';
+  document.getElementById('btnAvisoBackup').addEventListener('click', ()=> exportarBackup());
+}
+function renderBackupInfo(){
+  const ult = ultimoBackupData();
+  document.getElementById('backupUltimoTxt').textContent = ult ? `Último backup: ${fmtDateBR(ult)}.` : 'Nenhum backup feito ainda neste aparelho.';
+}
+async function exportarBackup(){
+  localStorage.setItem(LS_PREFIX+'ultimo_backup', todayLocal());   // antes de ler as configurações: o próprio arquivo já leva a data
+  const stores = {};
+  for(const nome of Array.from(db.objectStoreNames)) stores[nome] = await getAll(nome);
+  const configuracoes = {};
+  for(let i=0;i<localStorage.length;i++){
+    const k = localStorage.key(i);
+    if(k && k.startsWith(LS_PREFIX)) configuracoes[k] = localStorage.getItem(k);
+  }
+  const backup = { app:'livros', versao:1, exportadoEm:new Date().toISOString(), stores, configuracoes };
+  const blob = new Blob([JSON.stringify(backup)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `livros_backup_${stampArquivo()}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  renderCurrent();
+}
+document.getElementById('btnExportJson').addEventListener('click', ()=> exportarBackup());
+
+document.getElementById('btnImportJson').addEventListener('click', async ()=>{
+  const fileInput = document.getElementById('fileImportJson');
+  const resultEl = document.getElementById('import-json-result');
+  const file = fileInput.files[0];
+  if(!file){ avisar('Selecione um arquivo .json primeiro.'); return; }
+  let backup;
+  try{ backup = JSON.parse(await file.text()); }
+  catch(e){ resultEl.textContent = 'Arquivo .json inválido.'; return; }
+  if(backup && backup.app==='precario'){ resultEl.textContent = 'Este é um backup do app Preços, não do Livros.'; return; }
+  if(!(backup && backup.app==='livros' && backup.stores && typeof backup.stores==='object')){
+    resultEl.textContent = 'Este arquivo não parece ser um backup deste app.'; return;
+  }
+  const stores = backup.stores;
+  const nomes = Object.keys(stores).filter(n=> Array.isArray(stores[n]) && db.objectStoreNames.contains(n));
+  const qtd = n => (stores[n]||[]).length;
+  const resumo = `${qtd('livros')} livros, ${qtd('leituras')} leituras, ${qtd('anotacoes')} anotações`;
+  if(!await confirmar(`Isso vai APAGAR os dados atuais e substituir tudo pelo backup (${resumo}).\n\nContinuar?`)) return;
+  // restauração atômica: numa única transação — se algo falhar, nada é alterado
+  try{
+    await new Promise((resolve,reject)=>{
+      const t = db.transaction(nomes, 'readwrite');
+      t.oncomplete = resolve;
+      t.onerror = ()=> reject(t.error);
+      t.onabort = ()=> reject(t.error || new Error('transação abortada'));
+      nomes.forEach(n=>{
+        const os = t.objectStore(n);
+        os.clear();
+        stores[n].forEach(r=> os.put(r));
+      });
+    });
+  }catch(e){
+    resultEl.textContent = 'Não foi possível restaurar o backup — nenhum dado foi alterado. ('+(e&&e.message?e.message:e)+')';
+    return;
+  }
+  if(backup.configuracoes && typeof backup.configuracoes==='object'){
+    Object.keys(backup.configuracoes).forEach(k=>{
+      if(k.startsWith(LS_PREFIX)) localStorage.setItem(k, String(backup.configuracoes[k]));
+    });
+    CONFIG = loadConfig();
+    fillConfiguracoesForm();
+    applyTheme(localStorage.getItem(LS_PREFIX+'theme') || 'light');
+  }
+  await reloadAll();
+  resultEl.textContent = `Backup restaurado: ${resumo} — incluindo capas e configurações.`;
+  fileInput.value='';
+  renderCurrent();
+});
+
+/* ============================================================
+   INICIALIZAÇÃO
+   ============================================================ */
+fillConfiguracoesForm();
+/* ---- PWA: versão, armazenamento persistente e service worker ---- */
+const APP_VERSION = 'v1_01';
+document.getElementById('appVersaoTxt').textContent = APP_VERSION;
+if(navigator.storage && navigator.storage.persist){
+  navigator.storage.persist().then(ok=>{
+    const el = document.getElementById('appStorageTxt');
+    if(el) el.textContent = ok ? 'Armazenamento protegido contra limpeza automática: sim.' : 'Armazenamento protegido contra limpeza automática: não concedido (faça backup com frequência).';
+  }).catch(()=>{});
+}
+if('serviceWorker' in navigator && location.protocol.startsWith('http')){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
+openDB().then(async ()=>{
+  if(!localStorage.getItem(LS_PREFIX+'primeiro_uso')) localStorage.setItem(LS_PREFIX+'primeiro_uso', todayLocal());
+  await reloadAll();
+  switchView(CONFIG.telaInicial==='atalhos' ? 'inicio' : 'leituras', {raiz:true});
+}).catch(err=>{
+  document.body.innerHTML = '<div style="padding:24px;font-family:sans-serif">Erro ao abrir o banco de dados local: '+err+'</div>';
+});
+
+</script>
+</body>
+</html>
