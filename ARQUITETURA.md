@@ -1,6 +1,6 @@
 # ARQUITETURA.md — App "Livros"
 
-Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_01 em 2026-11-03; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
+Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_02 em 2026-11-04; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
 
 O escopo funcional está em `ESPECIFICACAO.md`; a ordem de entrega e o andamento estão em `PLANO.md`.
 
@@ -80,10 +80,19 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 - **Pilha única `navStack`** (telas + modais). O botão voltar do celular desempilha; sem nada empilhado, pergunta se quer sair do app.
 - Camadas de sheet (`criarCamada`): principal (`openSheet`), sub (`openSubSheet`), sub2 (`openSub2Sheet`); têm `dirty`/`salvando`/`confirmarDescarte` (sair de edição com alterações pede confirmação). Seletor sobreposto `pickerOverlay` (z-index 65) reservado para seletores (autores, categorias).
 - **Só empilha** por atalhos dentro das telas. Barra inferior e itens do Mais são **raiz** e zeram a pilha: `switchView(name, {raiz:true})`.
-- Barra inferior: Biblioteca, Desejos, Leituras, Pesquisa, Mais. Em Mais: Tela de atalhos, Backup e restauração, Configurações. `VIEWS_DO_MAIS` lista as telas que acendem a aba Mais.
+- Barra inferior: Biblioteca, Desejos, Leituras, Pesquisa, Mais. Em Mais: Tela de atalhos, Categorias de livros, Backup e restauração, Configurações. O botão flutuante `+` (`fabAdd`) aparece só em Biblioteca e Desejos. `VIEWS_DO_MAIS` lista as telas que acendem a aba Mais.
 - Página inicial configurável: Leituras (`view-leituras`) ou Atalhos (`view-inicio`).
 - `renderCurrent()` é o ponto único de redesenho; cada tela nova ganha seu `render*()` chamado ali.
 - Diálogos: `avisar(msg)`, `confirmar(msg)` → boolean, `perguntar(msg, valor)` → texto|null.
+
+### Livros (v1_02)
+
+- Biblioteca = livros com `situacao` `proprio`/`emprestado`; Desejos = `desejo`. Marcar como comprado só troca `situacao` para `proprio` (mesmo registro, nada se perde).
+- Listagem: `renderLivros(aba)`; grade/lista alternável na tela (`layoutTela`, reinicia com `CONFIG.layoutPadrao`, não é gravado). Só capa e título (o % de leitura entra na v1_06).
+- Detalhe `abrirLivro(id)` (sheet principal, modo leitura) e formulário `abrirFormLivro(id, situacaoInicial)`; salvar/cancelar de edição voltam ao detalhe sem empilhar nova entrada de histórico.
+- `autorIds` é gravado como `[]` (autores na v1_03); duplicidade de ISBN também na v1_03.
+- Exclusão `excluirLivro`: apaga em cascata leituras, progressos, anotações, personagens e preços do livro, avisando as quantidades.
+- Categorias: tela Mais → Categorias (`renderCategorias`); `criarCategoria`/`criarSubcategoria` também são usadas pelo botão `+` do formulário. Nome repetido (ignorando acento/caixa) é recusado. Excluir categoria apaga suas subcategorias e deixa os livros sem categoria.
 
 ## 8. Backup (reaproveitado do Preços, adaptado)
 

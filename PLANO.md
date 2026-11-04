@@ -4,8 +4,8 @@ Uma fase = uma versão = uma sessão (cabe no limite do plano gratuito). A ordem
 
 | Versão | Conteúdo | Situação |
 |---|---|---|
-| v1_01 | Base: esqueleto, banco/prefixo próprios, 4 abas + Mais, tema claro/escuro, página inicial configurável, backup completo + restauração, alerta de 7 dias, documentação | feita; aguardando publicação |
-| v1_02 | Livros manuais: cadastro, detalhe, grade/lista (+ layout padrão), categorias e subcategorias, próprio/emprestado/desejo, desejo → comprado, exclusão com aviso | |
+| v1_01 | Base: esqueleto, banco/prefixo próprios, 4 abas + Mais, tema claro/escuro, página inicial configurável, backup completo + restauração, alerta de 7 dias, documentação | publicada |
+| v1_02 | Livros manuais: cadastro, detalhe, grade/lista (+ layout padrão), categorias e subcategorias, próprio/emprestado/desejo, desejo → comprado, exclusão com aviso | feita; aguardando publicação |
 | v1_03 | Autores (sugestão, vários por livro, criar sem sair da tela, alerta de semelhança), duplicidade de ISBN, aba Lista de desejos | |
 | v1_04 | ISBN digitado + busca online (Google Books / Open Library), tela de revisão, capa | |
 | v1_05 | Scanner de código de barras (câmera) | |

@@ -319,6 +319,39 @@ header .sub{color:#E6D2D6;}
 /* Aviso de backup (7 dias) */
 .aviso-backup{background:var(--accent-soft);border:1px solid var(--accent);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:13px;}
 .aviso-backup .btn{margin-top:8px;}
+
+/* ---- Livros (v1_02): grade / lista, detalhe, formulário ---- */
+.livros-barra{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;}
+.livros-barra .hint{margin:0;}
+.livros-grade{display:grid;grid-template-columns:repeat(3,1fr);gap:12px 10px;}
+.livros-grade .livro-item{cursor:pointer;min-width:0;}
+.livros-grade .capa{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block;background:var(--paper-alt);}
+.livros-grade .capa-ph{display:flex;align-items:center;justify-content:center;font-size:30px;}
+.livros-grade .livro-tit{font-size:12.5px;font-weight:700;margin-top:5px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
+.livros-lista .livro-item{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:8px;cursor:pointer;}
+.livros-lista .livro-item:active,.livros-grade .livro-item:active{opacity:.7;}
+.livros-lista .capa{width:40px;height:58px;object-fit:cover;border-radius:4px;border:1px solid var(--line);flex:none;background:var(--paper-alt);}
+.livros-lista .capa-ph{display:flex;align-items:center;justify-content:center;font-size:20px;}
+.livros-lista .livro-tit{font-weight:700;font-size:15px;min-width:0;}
+.det-topo{display:flex;gap:14px;align-items:flex-start;}
+.det-capa{width:96px;aspect-ratio:2/3;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex:none;cursor:zoom-in;background:var(--paper-alt);}
+.det-capa-ph{width:96px;aspect-ratio:2/3;border-radius:8px;border:1px solid var(--line);flex:none;background:var(--paper-alt);display:flex;align-items:center;justify-content:center;font-size:34px;}
+.det-tit{font-size:18px;font-weight:800;line-height:1.25;margin:0;}
+.det-sub{font-size:14px;color:var(--ink-soft);margin-top:3px;}
+.det-kv{padding:5px 0;border-bottom:1px dashed var(--line);}
+.det-kv:last-child{border-bottom:none;}
+.det-kv .k{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);}
+.sel-linha{display:flex;gap:8px;align-items:center;}
+.sel-linha select{flex:1;min-width:0;}
+.sel-linha .btn{flex:none;}
+.photo-pick .col{display:flex;flex-direction:column;gap:6px;flex:1;min-width:0;}
+.cat-bloco{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:9px;}
+.cat-linha{display:flex;align-items:center;gap:6px;}
+.cat-linha .nome{flex:1;min-width:0;font-weight:700;font-size:15px;}
+.cat-linha .nome small{font-weight:400;color:var(--ink-soft);font-size:12px;}
+.cat-sub{margin:6px 0 0 14px;padding-top:6px;border-top:1px dashed var(--line);}
+.cat-sub .nome{font-weight:400;font-size:14px;}
+.cat-linha .btn-xs{flex:none;}
 </style>
 </head>
 <body>
@@ -344,13 +377,13 @@ header .sub{color:#E6D2D6;}
   <!-- ================= BIBLIOTECA ================= -->
   <section class="view" id="view-biblioteca">
     <h2 class="section-title">Biblioteca</h2>
-    <div class="vazio">Nenhum livro ainda. O cadastro de livros chega na próxima versão.</div>
+    <div id="livros-bib"></div>
   </section>
 
   <!-- ================= LISTA DE DESEJOS ================= -->
   <section class="view" id="view-desejos">
     <h2 class="section-title">Lista de desejos</h2>
-    <div class="vazio">Nenhum livro na lista de desejos.</div>
+    <div id="livros-des"></div>
   </section>
 
   <!-- ================= LEITURAS ================= -->
@@ -369,8 +402,18 @@ header .sub{color:#E6D2D6;}
   <section class="view" id="view-mais">
     <h2 class="section-title">Mais</h2>
     <button class="btn btn-outline btn-block" id="btnGoInicio" type="button" style="margin-bottom:10px;text-align:left">🏠 Tela de atalhos</button>
+    <button class="btn btn-outline btn-block" id="btnGoCategorias" type="button" style="margin-bottom:10px;text-align:left">🏷️ Categorias de livros</button>
     <button class="btn btn-outline btn-block" id="btnGoExportar" type="button" style="margin-bottom:10px;text-align:left">📤 Backup e restauração</button>
     <button class="btn btn-outline btn-block" id="btnGoConfiguracoes" type="button" style="text-align:left">⚙️ Configurações</button>
+  </section>
+
+  <!-- ================= CATEGORIAS DE LIVROS ================= -->
+  <section class="view" id="view-categorias">
+    <button class="btn btn-outline btn-sm" id="btnVoltarMaisCats" type="button" style="margin-bottom:12px">← Voltar</button>
+    <h2 class="section-title">Categorias de livros</h2>
+    <p class="hint" style="margin-top:0;margin-bottom:10px">Gêneros, temas ou o critério que você preferir. A categoria do livro é opcional.</p>
+    <div id="cats-lista"></div>
+    <button class="btn btn-accent btn-block" id="btnNovaCategoria" type="button">+ Nova categoria</button>
   </section>
 
   <!-- ================= BACKUP ================= -->
@@ -931,8 +974,8 @@ document.body.addEventListener('click', (e)=>{
    Barra inferior (4 áreas + Mais) = telas RAIZ: zeram a pilha. Atalhos dentro das telas empilham.
    ============================================================ */
 const TITULOS = {inicio:'Atalhos', biblioteca:'Biblioteca', desejos:'Lista de desejos', leituras:'Leituras', pesquisa:'Pesquisa',
-  mais:'Mais', exportar:'Backup', configuracoes:'Configurações'};
-const VIEWS_DO_MAIS = ['inicio','exportar','configuracoes'];
+  mais:'Mais', exportar:'Backup', configuracoes:'Configurações', categorias:'Categorias'};
+const VIEWS_DO_MAIS = ['inicio','exportar','configuracoes','categorias'];
 let viewAtual = null;
 let currentTab = null;
 function zerarPilhaTelas(){
@@ -977,6 +1020,9 @@ function switchView(name, opts){
 /* Cada tela ganha seu render() nas próximas versões. */
 function renderCurrent(){
   renderAvisoBackup();
+  document.getElementById('fabAdd').style.display = (currentTab==='biblioteca' || currentTab==='desejos') ? 'flex' : 'none';
+  if(currentTab==='biblioteca' || currentTab==='desejos') renderLivros(currentTab);
+  if(currentTab==='categorias') renderCategorias();
   if(currentTab==='exportar') renderBackupInfo();
 }
 
@@ -988,6 +1034,8 @@ document.querySelectorAll('.atalho-btn').forEach(btn=>{
 });
 document.getElementById('btnGoInicio').addEventListener('click', ()=> switchView('inicio', {raiz:true}));
 document.getElementById('btnGoExportar').addEventListener('click', ()=> switchView('exportar', {raiz:true}));
+document.getElementById('btnGoCategorias').addEventListener('click', ()=> switchView('categorias', {raiz:true}));
+document.getElementById('btnVoltarMaisCats').addEventListener('click', ()=> switchView('mais', {raiz:true}));
 document.getElementById('btnGoConfiguracoes').addEventListener('click', ()=> switchView('configuracoes', {raiz:true}));
 document.getElementById('btnVoltarMaisExportar').addEventListener('click', ()=> switchView('mais', {raiz:true}));
 document.getElementById('btnVoltarMaisConfig').addEventListener('click', ()=> switchView('mais', {raiz:true}));
@@ -1014,6 +1062,270 @@ document.getElementById('cfg-theme-light').addEventListener('click', ()=>{
 });
 document.getElementById('cfg-theme-dark').addEventListener('click', ()=>{
   localStorage.setItem(LS_PREFIX+'theme', 'dark'); applyTheme('dark');
+});
+
+/* ============================================================
+   LIVROS (v1_02): cadastro manual, detalhe, grade/lista, desejo -> comprado, exclusão com aviso
+   Situação do livro: 'desejo' (aba Desejos) | 'proprio' | 'emprestado' (aba Biblioteca).
+   Autores, leituras, preços etc. entram nas próximas versões; a exclusão já leva os dados ligados ao livro.
+   ============================================================ */
+const SITUACOES = {proprio:'Próprio', emprestado:'Emprestado', desejo:'Desejo'};
+let layoutTela = CONFIG.layoutPadrao;   // grade | lista: alternável na própria tela; reinicia com o padrão das configurações
+function autoGrow(el){ el.style.height='auto'; el.style.height = Math.max(el.scrollHeight, 56)+'px'; }
+function nomeCategoria(l){
+  const c = CATS.find(x=>x.id===l.categoriaId);
+  const s = SUBCATS.find(x=>x.id===l.subcategoriaId);
+  return c ? (c.nome + (s ? ' › '+s.nome : '')) : '';
+}
+function livroItemHTML(l){
+  const capa = l.capa ? `<img class="capa" src="${l.capa}" alt="">` : `<div class="capa capa-ph">📕</div>`;
+  const tit = `<div class="livro-tit">${escapeHtml(l.titulo)}</div>`;
+  return `<div class="livro-item" data-id="${l.id}">${capa}${tit}</div>`;
+}
+function renderLivros(aba){
+  const el = document.getElementById(aba==='desejos' ? 'livros-des' : 'livros-bib');
+  const lista = LIVROS.filter(l=> aba==='desejos' ? l.situacao==='desejo' : l.situacao!=='desejo');
+  if(!lista.length){
+    el.innerHTML = `<div class="vazio">${aba==='desejos' ? 'Nenhum livro na lista de desejos.' : 'Nenhum livro ainda.'}<br>Toque em + para cadastrar.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="livros-barra"><span class="hint">${lista.length} ${lista.length===1?'livro':'livros'}</span>`
+    + `<button class="btn btn-outline btn-xs" type="button" data-act="layout">${layoutTela==='grade' ? '☰ Lista' : '▦ Grade'}</button></div>`
+    + `<div class="${layoutTela==='grade' ? 'livros-grade' : 'livros-lista'}">${lista.map(livroItemHTML).join('')}</div>`;
+  el.querySelector('[data-act="layout"]').addEventListener('click', ()=>{ layoutTela = layoutTela==='grade' ? 'lista' : 'grade'; renderLivros(aba); });
+  el.querySelectorAll('.livro-item').forEach(it=> it.addEventListener('click', ()=> abrirLivro(Number(it.dataset.id))));
+}
+document.getElementById('cfg-layout-padrao').addEventListener('change', e=>{ layoutTela = e.target.value; });
+document.getElementById('fabAdd').addEventListener('click', ()=> abrirFormLivro(null, currentTab==='desejos' ? 'desejo' : 'proprio'));
+
+/* ---- Detalhe ---- */
+function kv(k, v){ return v ? `<div class="det-kv"><div class="k">${k}</div><div class="pre-wrap">${escapeHtml(String(v))}</div></div>` : ''; }
+function abrirLivro(id){
+  const l = LIVROS.find(x=>x.id===id);
+  if(!l){ closeSheet(); return; }
+  const capa = l.capa ? `<img class="det-capa" src="${l.capa}" alt="">` : `<div class="det-capa-ph">📕</div>`;
+  const sit = SITUACOES[l.situacao] || 'Próprio';
+  openSheet(`<div class="leitura">
+    <div class="det-topo">${capa}<div style="min-width:0">
+      <h3 class="det-tit">${escapeHtml(l.titulo)}</h3>
+      ${l.subtitulo ? `<div class="det-sub">${escapeHtml(l.subtitulo)}</div>` : ''}
+      <div style="margin-top:8px"><span class="badge ${l.situacao==='desejo' ? 'badge-bad' : 'badge-good'}">${sit}</span></div>
+    </div></div>
+    <div style="margin-top:12px">
+      ${l.situacao==='emprestado' ? kv('Emprestado de', l.emprestadoDe) : ''}
+      ${kv('Categoria', nomeCategoria(l))}
+      ${kv('ISBN', l.isbn)}
+      ${kv('Páginas', l.paginas)}
+      ${kv('Descrição', l.descricao)}
+      ${kv('Meus comentários', l.comentarios)}
+    </div>
+  </div>
+  ${l.situacao==='desejo' ? '<button class="btn btn-accent btn-block" id="lv-comprei" type="button" style="margin-top:14px">✓ Marcar como comprado</button>' : ''}
+  <div class="sheet-actions">
+    <button class="btn btn-outline" id="lv-close" type="button" style="flex:1">Fechar</button>
+    <button class="btn btn-accent" id="lv-edit" type="button" style="flex:1">Editar</button>
+  </div>
+  <button class="btn btn-danger btn-block" id="lv-del" type="button" style="margin-top:10px">Excluir livro</button>`);
+  document.getElementById('lv-close').addEventListener('click', ()=> closeSheet());
+  document.getElementById('lv-edit').addEventListener('click', ()=> abrirFormLivro(id));
+  document.getElementById('lv-del').addEventListener('click', ()=> excluirLivro(id));
+  const bc = document.getElementById('lv-comprei');
+  if(bc) bc.addEventListener('click', async ()=>{
+    if(!await confirmar(`Marcar "${l.titulo}" como comprado?\n\nO livro sai da lista de desejos e passa a aparecer na Biblioteca.`)) return;
+    await putRecord('livros', {...l, situacao:'proprio'});
+    await reloadAll(); renderCurrent(); abrirLivro(id);
+  });
+}
+
+/* ---- Formulário (novo / edição) ---- */
+function abrirFormLivro(id, situacaoInicial){
+  const l = id!=null ? LIVROS.find(x=>x.id===id) : null;
+  const v = l || {situacao: situacaoInicial || 'proprio'};
+  let capa = v.capa || '';
+  openSheet(`<h3>${l ? 'Editar livro' : 'Novo livro'}</h3>
+    <div class="tr-form">
+    <label>Título *</label><input type="text" id="lv-titulo" value="${escapeHtml(v.titulo||'')}" autocomplete="off">
+    <label>Subtítulo</label><input type="text" id="lv-subtitulo" value="${escapeHtml(v.subtitulo||'')}" autocomplete="off">
+    <label>Situação</label>
+    <select id="lv-situacao">
+      <option value="proprio" ${v.situacao==='proprio'?'selected':''}>Próprio</option>
+      <option value="emprestado" ${v.situacao==='emprestado'?'selected':''}>Emprestado</option>
+      <option value="desejo" ${v.situacao==='desejo'?'selected':''}>Desejo (quero comprar)</option>
+    </select>
+    <div id="lv-emp-wrap"><label>Emprestado de</label><input type="text" id="lv-emprestadoDe" value="${escapeHtml(v.emprestadoDe||'')}" placeholder="Nome de quem emprestou" autocomplete="off"></div>
+    <label>Categoria</label>
+    <div class="sel-linha"><select id="lv-cat"></select><button class="btn btn-outline btn-sm" id="lv-cat-novo" type="button">+</button></div>
+    <label>Subcategoria</label>
+    <div class="sel-linha"><select id="lv-sub"></select><button class="btn btn-outline btn-sm" id="lv-sub-novo" type="button">+</button></div>
+    <label>ISBN</label><input type="text" id="lv-isbn" inputmode="numeric" value="${escapeHtml(v.isbn||'')}" autocomplete="off">
+    <label>Páginas</label><input type="number" id="lv-paginas" inputmode="numeric" min="1" value="${v.paginas||''}">
+    <label>Capa</label>
+    <div class="photo-pick"><div id="lv-capa-prev"></div>
+      <div class="col"><input type="file" id="lv-capa-file" accept="image/*">
+      <button class="btn btn-outline btn-sm" id="lv-capa-del" type="button">Remover capa</button></div></div>
+    <label>Descrição</label><textarea id="lv-descricao">${escapeHtml(v.descricao||'')}</textarea>
+    <label>Meus comentários</label><textarea id="lv-comentarios">${escapeHtml(v.comentarios||'')}</textarea>
+    </div>
+    <div class="sheet-actions">
+      <button class="btn btn-outline" id="lv-cancel" type="button" style="flex:1">Cancelar</button>
+      <button class="btn btn-accent" id="lv-save" type="button" style="flex:1">Salvar</button>
+    </div>`);
+  const $ = x=> document.getElementById(x);
+  const sitSel=$('lv-situacao'), catSel=$('lv-cat'), subSel=$('lv-sub');
+  const atualizaEmp = ()=>{ $('lv-emp-wrap').style.display = sitSel.value==='emprestado' ? 'block' : 'none'; };
+  const preencheCats = (catId, subId)=>{
+    catSel.innerHTML = '<option value="">(sem categoria)</option>' + optionsHTML(CATS, catId);
+    preencheSubs(catId, subId);
+  };
+  const preencheSubs = (catId, subId)=>{
+    const subs = SUBCATS.filter(s=>s.categoriaId===catId);
+    subSel.innerHTML = '<option value="">(sem subcategoria)</option>' + optionsHTML(subs, subId);
+    subSel.disabled = !catId;
+    $('lv-sub-novo').disabled = !catId;
+  };
+  const pintaCapa = ()=>{
+    $('lv-capa-prev').innerHTML = capa ? `<img src="${capa}" alt="" style="width:64px;height:96px">` : '<div class="ph" style="height:96px">📕</div>';
+    $('lv-capa-del').style.display = capa ? 'block' : 'none';
+  };
+  atualizaEmp(); preencheCats(v.categoriaId, v.subcategoriaId); pintaCapa();
+  sitSel.addEventListener('change', atualizaEmp);
+  catSel.addEventListener('change', ()=> preencheSubs(Number(catSel.value)||undefined));
+  ['lv-descricao','lv-comentarios'].forEach(t=>{ const el=$(t); autoGrow(el); el.addEventListener('input', ()=>autoGrow(el)); });
+  $('lv-capa-file').addEventListener('change', async e=>{
+    const f = e.target.files[0]; if(!f) return;
+    try{ capa = await resizeImage(f, 360, 0.7); pintaCapa(); }catch(err){ avisar('Não foi possível ler essa imagem.'); }
+  });
+  $('lv-capa-del').addEventListener('click', ()=>{ capa=''; pintaCapa(); camadaMain.dirty = true; });
+  $('lv-cat-novo').addEventListener('click', async ()=>{
+    const id2 = await criarCategoria();
+    if(id2){ preencheCats(id2); camadaMain.dirty = true; }
+  });
+  $('lv-sub-novo').addEventListener('click', async ()=>{
+    const catId = Number(catSel.value); if(!catId) return;
+    const id2 = await criarSubcategoria(catId);
+    if(id2){ preencheSubs(catId, id2); camadaMain.dirty = true; }
+  });
+  $('lv-cancel').addEventListener('click', async ()=>{
+    if(camadaMain.precisaConfirmar() && !await camadaMain.confirmarDescarte()) return;
+    if(l) abrirLivro(id); else camadaMain.fecharAgora();
+  });
+  $('lv-save').addEventListener('click', async ()=>{
+    const titulo = $('lv-titulo').value.trim();
+    if(!titulo){ camadaMain.salvando = false; avisar('Informe o título do livro.'); return; }
+    const sit = sitSel.value;
+    const reg = {
+      ...(l||{}),
+      titulo,
+      subtitulo: $('lv-subtitulo').value.trim(),
+      situacao: sit,
+      emprestadoDe: sit==='emprestado' ? $('lv-emprestadoDe').value.trim() : '',
+      categoriaId: Number(catSel.value) || null,
+      subcategoriaId: (Number(catSel.value) && Number(subSel.value)) || null,
+      isbn: $('lv-isbn').value.trim(),
+      paginas: Number($('lv-paginas').value) || null,
+      capa,
+      descricao: $('lv-descricao').value.trim(),
+      comentarios: $('lv-comentarios').value.trim(),
+      autorIds: (l && l.autorIds) || []
+    };
+    const novoId = await putRecord('livros', reg);
+    await reloadAll(); renderCurrent();
+    if(l) abrirLivro(id); else camadaMain.fecharAgora();
+  });
+  setTimeout(()=>{ if(!l) $('lv-titulo').focus(); }, 60);
+}
+
+/* ---- Exclusão (avisa dos dados ligados ao livro) ---- */
+async function excluirLivro(id){
+  const l = LIVROS.find(x=>x.id===id); if(!l) return;
+  const lids = LEITURAS.filter(x=>x.livroId===id).map(x=>x.id);
+  const progs = PROGRESSOS.filter(p=>lids.includes(p.leituraId));
+  const anots = ANOTACOES.filter(a=>lids.includes(a.leituraId));
+  const pers = PERSONAGENS.filter(p=>p.livroId===id);
+  const prec = PRECOS.filter(p=>p.livroId===id);
+  const partes = [];
+  if(lids.length) partes.push(`${lids.length} ${lids.length===1?'leitura':'leituras'}`);
+  if(progs.length) partes.push(`${progs.length} ${progs.length===1?'registro de progresso':'registros de progresso'}`);
+  if(anots.length) partes.push(`${anots.length} ${anots.length===1?'anotação':'anotações'}`);
+  if(pers.length) partes.push(`${pers.length} ${pers.length===1?'personagem':'personagens'}`);
+  if(prec.length) partes.push(`${prec.length} ${prec.length===1?'preço':'preços'}`);
+  const msg = `Excluir "${l.titulo}"?` + (partes.length ? `\n\nTambém serão excluídos: ${partes.join(', ')}.` : '') + '\n\nNão há como desfazer.';
+  if(!await confirmar(msg)) return;
+  for(const p of progs) await deleteRecord('progressos', p.id);
+  for(const a of anots) await deleteRecord('anotacoes', a.id);
+  for(const x of lids) await deleteRecord('leituras', x);
+  for(const p of pers) await deleteRecord('personagens', p.id);
+  for(const p of prec) await deleteRecord('precos', p.id);
+  await deleteRecord('livros', id);
+  await reloadAll(); renderCurrent(); closeSheet();
+}
+
+/* ---- Categorias e subcategorias de livros ---- */
+async function pedirNome(msg, atual, existentes){
+  const r = await perguntar(msg, atual||'');
+  if(r===null) return null;
+  const nome = r.trim(); if(!nome) return null;
+  const n = normalizeNome(nome);
+  if(existentes.some(x=> normalizeNome(x.nome)===n && x.nome!==atual)){ avisar(`Já existe "${nome}".`); return null; }
+  return nome;
+}
+async function criarCategoria(){
+  const nome = await pedirNome('Nome da nova categoria:', '', CATS);
+  if(!nome) return null;
+  const id = await putRecord('categorias', {nome});
+  await reloadAll(); renderCurrent(); return id;
+}
+async function criarSubcategoria(categoriaId){
+  const nome = await pedirNome('Nome da nova subcategoria:', '', SUBCATS.filter(s=>s.categoriaId===categoriaId));
+  if(!nome) return null;
+  const id = await putRecord('subcategorias', {nome, categoriaId});
+  await reloadAll(); renderCurrent(); return id;
+}
+function renderCategorias(){
+  const el = document.getElementById('cats-lista');
+  if(!CATS.length){ el.innerHTML = '<div class="vazio" style="margin-bottom:12px">Nenhuma categoria ainda.</div>'; return; }
+  el.innerHTML = CATS.map(c=>{
+    const qtd = LIVROS.filter(l=>l.categoriaId===c.id).length;
+    const subs = SUBCATS.filter(s=>s.categoriaId===c.id).map(s=>{
+      const q = LIVROS.filter(l=>l.subcategoriaId===s.id).length;
+      return `<div class="cat-linha cat-sub"><span class="nome">${escapeHtml(s.nome)} <small>(${q})</small></span>
+        <button class="btn btn-outline btn-xs" data-act="sub-ren" data-id="${s.id}" type="button">Renomear</button>
+        <button class="btn btn-danger btn-xs" data-act="sub-del" data-id="${s.id}" type="button">Excluir</button></div>`;
+    }).join('');
+    return `<div class="cat-bloco"><div class="cat-linha"><span class="nome">${escapeHtml(c.nome)} <small>(${qtd})</small></span>
+      <button class="btn btn-outline btn-xs" data-act="cat-ren" data-id="${c.id}" type="button">Renomear</button>
+      <button class="btn btn-danger btn-xs" data-act="cat-del" data-id="${c.id}" type="button">Excluir</button></div>
+      ${subs}
+      <button class="btn btn-outline btn-xs" data-act="sub-novo" data-id="${c.id}" type="button" style="margin-top:8px">+ Subcategoria</button></div>`;
+  }).join('');
+}
+document.getElementById('btnNovaCategoria').addEventListener('click', ()=> criarCategoria());
+document.getElementById('cats-lista').addEventListener('click', async e=>{
+  const b = e.target.closest('button[data-act]'); if(!b) return;
+  const id = Number(b.dataset.id), act = b.dataset.act;
+  if(act==='sub-novo'){ await criarSubcategoria(id); return; }
+  if(act==='cat-ren' || act==='sub-ren'){
+    const cat = act==='cat-ren';
+    const reg = (cat ? CATS : SUBCATS).find(x=>x.id===id); if(!reg) return;
+    const nome = await pedirNome('Novo nome:', reg.nome, cat ? CATS : SUBCATS.filter(s=>s.categoriaId===reg.categoriaId));
+    if(!nome) return;
+    await putRecord(cat ? 'categorias' : 'subcategorias', {...reg, nome});
+    await reloadAll(); renderCurrent(); return;
+  }
+  if(act==='cat-del' || act==='sub-del'){
+    const cat = act==='cat-del';
+    const reg = (cat ? CATS : SUBCATS).find(x=>x.id===id); if(!reg) return;
+    const subIds = cat ? SUBCATS.filter(s=>s.categoriaId===id).map(s=>s.id) : [];
+    const afetados = LIVROS.filter(l=> cat ? l.categoriaId===id : l.subcategoriaId===id);
+    let msg = `Excluir ${cat?'a categoria':'a subcategoria'} "${reg.nome}"?`;
+    if(subIds.length) msg += `\n\nAs ${subIds.length} subcategorias dela também serão excluídas.`;
+    if(afetados.length) msg += `\n\n${afetados.length} ${afetados.length===1?'livro ficará':'livros ficarão'} sem ${cat?'categoria':'subcategoria'} (os livros não são excluídos).`;
+    if(!await confirmar(msg)) return;
+    for(const l of afetados) await putRecord('livros', cat ? {...l, categoriaId:null, subcategoriaId:null} : {...l, subcategoriaId:null});
+    for(const sid of subIds) await deleteRecord('subcategorias', sid);
+    await deleteRecord(cat ? 'categorias' : 'subcategorias', id);
+    await reloadAll(); renderCurrent();
+  }
 });
 
 /* ============================================================
@@ -1117,7 +1429,7 @@ document.getElementById('btnImportJson').addEventListener('click', async ()=>{
    ============================================================ */
 fillConfiguracoesForm();
 /* ---- PWA: versão, armazenamento persistente e service worker ---- */
-const APP_VERSION = 'v1_01';
+const APP_VERSION = 'v1_02';
 document.getElementById('appVersaoTxt').textContent = APP_VERSION;
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persist().then(ok=>{
