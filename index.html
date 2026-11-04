@@ -372,6 +372,16 @@ header .sub{color:#E6D2D6;}
 .isbn-linha{display:flex;gap:8px;align-items:stretch;}
 .isbn-linha input{flex:1;min-width:0;}
 .isbn-linha .btn{flex:none;white-space:nowrap;}
+/* Scanner de código de barras (v1_05): tela cheia preta, acima das camadas (z 70), abaixo da foto ampliada e dos diálogos */
+.scan-overlay{position:fixed;inset:0;background:#000;display:none;flex-direction:column;z-index:70;}
+.scan-overlay.active{display:flex;}
+.scan-wrap{position:relative;flex:1;min-height:0;overflow:hidden;}
+.scan-wrap video{width:100%;height:100%;object-fit:cover;display:block;}
+.scan-guia{position:absolute;left:8%;right:8%;top:50%;height:26%;transform:translateY(-50%);border:2px solid rgba(255,255,255,.9);border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.5);}
+.scan-guia::after{content:"";position:absolute;left:6%;right:6%;top:50%;height:2px;background:rgba(255,80,80,.85);}
+.scan-msg{position:absolute;left:14px;right:14px;top:calc(env(safe-area-inset-top) + 16px);color:#fff;text-align:center;font-size:15px;line-height:1.4;text-shadow:0 1px 3px rgba(0,0,0,.8);}
+.scan-barra{display:flex;gap:10px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#111;}
+.scan-btn{flex:1;padding:13px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.45);background:transparent;color:#fff;font-size:15px;font-family:inherit;}
 .rev-row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;margin:0;border-bottom:1px solid var(--line);cursor:pointer;text-transform:none;letter-spacing:0;font-size:14px;font-weight:400;color:var(--ink);}
 .rev-row input[type=checkbox]{width:22px;height:22px;flex:none;margin-top:1px;padding:0;accent-color:var(--accent);}
 .rev-row .rv{min-width:0;flex:1;}
@@ -520,6 +530,18 @@ header .sub{color:#E6D2D6;}
 </div>
 <div class="overlay" id="pickerOverlay" style="z-index:65">
   <div class="sheet" id="pickerSheet"></div>
+</div>
+
+<div class="scan-overlay" id="scanOverlay">
+  <div class="scan-wrap">
+    <video id="scanVideo" playsinline muted autoplay></video>
+    <div class="scan-guia"></div>
+    <div class="scan-msg" id="scanMsg"></div>
+  </div>
+  <div class="scan-barra">
+    <button class="scan-btn" id="scanLanterna" type="button" style="display:none">🔦 Luz</button>
+    <button class="scan-btn" id="scanDigitar" type="button">⌨ Digitar à mão</button>
+  </div>
 </div>
 
 <div class="lightbox" id="lightbox">
@@ -870,7 +892,7 @@ function executarAposHistorico(fn){
 }
 /* Camada de sheet que o voltar fecharia agora (null se há diálogo/foto/seletor por cima ou nenhuma aberta). */
 function camadaTopoAtiva(){
-  if(dialogoAberto() || lightbox.classList.contains('active') || pickerOverlay.classList.contains('active')) return null;
+  if(dialogoAberto() || lightbox.classList.contains('active') || pickerOverlay.classList.contains('active') || scanOverlay.classList.contains('active')) return null;
   return [camadaSub2, camadaSub, camadaMain].find(c=>c.ativa()) || null;
 }
 window.addEventListener('popstate', ()=>{
@@ -899,6 +921,7 @@ window.addEventListener('popstate', ()=>{
     if(dialogoAberto()) fecharDialogoDom();
     else if(lightbox.classList.contains('active')) closeLightboxDom();
     else if(pickerOverlay.classList.contains('active')) closePickerDom();
+    else if(scanOverlay.classList.contains('active')) closeScanDom();
     else if(sub2Overlay.classList.contains('active')) closeSub2SheetDom();
     else if(subOverlay.classList.contains('active')) closeSubSheetDom();
     else if(overlay.classList.contains('active')) closeSheetDom();
@@ -1216,6 +1239,18 @@ function livroComIsbn(isbn, ignorarId){
   if(!k) return null;
   return LIVROS.find(l=> l.id!==ignorarId && isbnChave(l.isbn)===k) || null;
 }
+/* Seletor de ISBN repetido (ao salvar e logo após ler o código pela câmera). Devolve 'abrir' | 'salvar' | 'voltar' | null. */
+function escolherIsbnRepetido(rep, modo){
+  const leitura = modo==='leitura';
+  return escolherNoPicker(`<h3>ISBN já cadastrado</h3>
+    <p class="hint" style="margin-top:0">“${escapeHtml(rep.titulo)}” (${rep.situacao==='desejo' ? 'Lista de desejos' : 'Biblioteca'}) já tem este ISBN.</p>
+    <div class="escolha-lista">
+      <button class="btn btn-accent btn-block" type="button" data-v="abrir">Abrir o livro existente</button>
+      <button class="btn btn-outline btn-block" type="button" data-v="salvar">${leitura ? 'Continuar cadastrando (outro exemplar)' : 'Salvar mesmo assim (outro exemplar)'}</button>
+      <button class="btn btn-outline btn-block" type="button" data-v="voltar" style="text-align:center">Voltar ao formulário</button>
+    </div>
+    <p class="hint">“Abrir o livro existente” descarta o que você preencheu aqui.</p>`);
+}
 
 /* ---- Busca online por ISBN (v1_04): Google Books + Open Library, nada é gravado sem revisão ---- */
 function isbnValido(s){
@@ -1287,6 +1322,109 @@ async function baixarCapa(urls){
   }
   return '';
 }
+/* ---- Scanner de código de barras (v1_05): câmera + BarcodeDetector do Chrome. Só LÊ o código; quem decide o que fazer é o formulário. ---- */
+const scanOverlay = document.getElementById('scanOverlay');
+const scanVideo = document.getElementById('scanVideo');
+const scanMsg = document.getElementById('scanMsg');
+const scanLanterna = document.getElementById('scanLanterna');
+const SCAN_MSG_PADRAO = 'Aponte a câmera para o código de barras do livro (o que começa com 978 ou 979).';
+let _scanResolve = null, _scanStream = null, _scanId = 0, _scanLuz = false;
+function pararCamera(){
+  _scanId++;                                   // encerra o laço de leitura em andamento
+  if(_scanStream){ _scanStream.getTracks().forEach(t=>t.stop()); _scanStream = null; }
+  scanVideo.srcObject = null; _scanLuz = false;
+}
+function closeScanDom(){                       // também chamado pelo voltar do celular
+  scanOverlay.classList.remove('active'); pararCamera();
+  if(_scanResolve){ const r=_scanResolve; _scanResolve=null; r(null); }
+}
+function fecharScanner(){
+  if(!scanOverlay.classList.contains('active')) return;
+  closeScanDom(); consumeModalHistory();
+}
+/* Fecha o scanner e entrega o resultado: ISBN-13 lido, '' (quer digitar à mão). Cancelar/voltar entrega null. */
+function concluirScan(valor){
+  const r = _scanResolve; _scanResolve = null;
+  fecharScanner();
+  if(r) r(valor);
+}
+function erroCamera(err){
+  const n = err && err.name;
+  if(n==='NotAllowedError' || n==='SecurityError') return 'A câmera está bloqueada para o app.\n\nNo Chrome, toque no ícone ao lado do endereço (ou em Configurações do site) e permita a Câmera; se instalou o app, veja também Configurações do Android → Apps → Livros → Permissões.\n\nEnquanto isso, digite o ISBN à mão.';
+  if(n==='NotFoundError' || n==='OverconstrainedError') return 'Não encontrei uma câmera neste aparelho. Digite o ISBN à mão.';
+  if(n==='NotReadableError') return 'A câmera está sendo usada por outro app. Feche-o e tente de novo, ou digite o ISBN à mão.';
+  return 'Não consegui abrir a câmera' + (n ? ' ('+n+')' : '') + '. Digite o ISBN à mão.';
+}
+async function loopLeitura(stream, meuId){
+  const det = new BarcodeDetector({formats:['ean_13']});
+  const t0 = Date.now(); let voltaMsgEm = 0, dica = false;
+  while(meuId===_scanId){
+    try{
+      if(scanVideo.readyState>=2){
+        const cods = await det.detect(scanVideo);
+        if(meuId!==_scanId) return;
+        for(const c of cods){
+          const v = (c.rawValue||'').replace(/\D/g,'');
+          if(/^97[89]\d{10}$/.test(v) && isbnValido(v)){
+            if(navigator.vibrate) navigator.vibrate(60);
+            concluirScan(v); return;
+          }
+          if(v.length===13){ scanMsg.textContent = 'Esse código não é de livro (ISBN começa com 978 ou 979). Procure o código de barras da contracapa.'; voltaMsgEm = Date.now()+3500; }
+        }
+      }
+    }catch(e){}
+    if(voltaMsgEm && Date.now()>voltaMsgEm){ scanMsg.textContent = SCAN_MSG_PADRAO; voltaMsgEm = 0; }
+    if(!dica && Date.now()-t0>15000){ dica = true; scanMsg.textContent = 'Ainda não li. Afaste um pouco o celular, evite reflexo e use a Luz, ou toque em “Digitar à mão”.'; voltaMsgEm = Date.now()+6000; }
+    await new Promise(r=>setTimeout(r,180));
+  }
+}
+async function escanearIsbn(){
+  if(!window.isSecureContext || !navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){
+    await avisar('Este navegador não liberou a câmera para o app. Digite o ISBN à mão.'); return null;
+  }
+  if(!window.BarcodeDetector){
+    await avisar('Este navegador não tem leitor de código de barras (ele vem no Chrome do Android). Digite o ISBN à mão.'); return null;
+  }
+  try{
+    const f = await BarcodeDetector.getSupportedFormats();
+    if(!f.includes('ean_13')){ await avisar('O leitor de código de barras deste aparelho não lê o formato dos livros (EAN-13). Digite o ISBN à mão.'); return null; }
+  }catch(e){}
+  if(_scanResolve){ const r=_scanResolve; _scanResolve=null; r(null); }
+  const fim = new Promise(res=>{ _scanResolve = res; });
+  scanMsg.textContent = 'Abrindo a câmera…';
+  scanLanterna.style.display = 'none'; scanLanterna.textContent = '🔦 Luz';
+  scanOverlay.classList.add('active'); pushModalHistory();
+  const meuId = ++_scanId;
+  let stream;
+  try{
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}}, audio:false});
+  }catch(err){
+    fecharScanner();
+    await avisar(erroCamera(err));
+    return fim;
+  }
+  if(meuId!==_scanId || !scanOverlay.classList.contains('active')){   // fechou enquanto pedia a permissão
+    stream.getTracks().forEach(t=>t.stop());
+    return fim;
+  }
+  _scanStream = stream;
+  scanVideo.srcObject = stream;
+  try{ await scanVideo.play(); }catch(e){}
+  let caps = {};
+  try{ caps = stream.getVideoTracks()[0].getCapabilities() || {}; }catch(e){}
+  scanLanterna.style.display = caps.torch ? '' : 'none';
+  scanMsg.textContent = SCAN_MSG_PADRAO;
+  loopLeitura(stream, meuId);
+  return fim;
+}
+scanLanterna.addEventListener('click', async ()=>{
+  const tr = _scanStream && _scanStream.getVideoTracks()[0]; if(!tr) return;
+  const quer = !_scanLuz;
+  try{ await tr.applyConstraints({advanced:[{torch:quer}]}); _scanLuz = quer; scanLanterna.textContent = quer ? '🔦 Apagar luz' : '🔦 Luz'; }catch(e){}
+});
+document.getElementById('scanDigitar').addEventListener('click', ()=> concluirScan(''));
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) fecharScanner(); });   // app em segundo plano: solta a câmera
+
 /* Tela de revisão: cada campo achado tem uma caixa. Marcado por padrão só onde o formulário está vazio. */
 function abrirRevisaoIsbn(res, atual, aoAplicar){
   const d = res.dados;
@@ -1412,7 +1550,7 @@ function abrirFormLivro(id, situacaoInicial){
     <label>Subcategoria</label>
     <div class="sel-linha"><select id="lv-sub"></select><button class="btn btn-outline btn-sm" id="lv-sub-novo" type="button">+</button></div>
     <label>ISBN</label>
-    <div class="isbn-linha"><input type="text" id="lv-isbn" inputmode="numeric" value="${escapeHtml(v.isbn||'')}" autocomplete="off" placeholder="10 ou 13 números"><button class="btn btn-outline btn-sm" id="lv-isbn-busca" type="button">🔍 Buscar</button></div>
+    <div class="isbn-linha"><input type="text" id="lv-isbn" inputmode="numeric" value="${escapeHtml(v.isbn||'')}" autocomplete="off" placeholder="10 ou 13 números"><button class="btn btn-outline btn-sm" id="lv-isbn-scan" type="button" aria-label="Ler o código de barras com a câmera" title="Ler o código de barras com a câmera">📷</button><button class="btn btn-outline btn-sm" id="lv-isbn-busca" type="button">🔍 Buscar</button></div>
     <div class="aviso-isbn" id="lv-isbn-aviso"></div>
     <label>Páginas</label><input type="number" id="lv-paginas" inputmode="numeric" min="1" value="${v.paginas||''}">
     <label>Capa</label>
@@ -1535,6 +1673,21 @@ function abrirFormLivro(id, situacaoInicial){
       }, aplicaEncontrados);
     } finally { btnBusca.disabled = false; btnBusca.textContent = '🔍 Buscar'; }
   });
+  /* Scanner: lê o código pela câmera, preenche o ISBN e já abre a busca online (que só mostra a revisão; nada grava sem Salvar) */
+  $('lv-isbn-scan').addEventListener('click', async ()=>{
+    camadaMain.salvando = false;
+    const lido = await escanearIsbn();
+    if(lido===null) return;                       // cancelou / voltou / sem câmera
+    if(lido===''){ isbnEl.focus(); return; }      // quer digitar à mão
+    isbnEl.value = lido; marcaAlt(); avisoIsbn();
+    const rep = livroComIsbn(lido, l ? l.id : undefined);
+    if(rep){
+      const esc = await escolherIsbnRepetido(rep, 'leitura');
+      if(esc==='abrir'){ abrirLivro(rep.id); return; }
+      if(esc!=='salvar') return;
+    }
+    btnBusca.click();
+  });
   catSel.addEventListener('change', ()=> preencheSubs(Number(catSel.value)||undefined));
   ['lv-descricao','lv-comentarios'].forEach(t=>{ const el=$(t); autoGrow(el); el.addEventListener('input', ()=>autoGrow(el)); });
   $('lv-capa-file').addEventListener('change', async e=>{
@@ -1568,14 +1721,7 @@ function abrirFormLivro(id, situacaoInicial){
     const isbnMudou = !l || isbnChave(l.isbn) !== isbnChave($('lv-isbn').value);
     const repetido = isbnMudou ? livroComIsbn($('lv-isbn').value, l ? l.id : undefined) : null;
     if(repetido){
-      const esc = await escolherNoPicker(`<h3>ISBN já cadastrado</h3>
-        <p class="hint" style="margin-top:0">“${escapeHtml(repetido.titulo)}” (${repetido.situacao==='desejo' ? 'Lista de desejos' : 'Biblioteca'}) já tem este ISBN.</p>
-        <div class="escolha-lista">
-          <button class="btn btn-accent btn-block" type="button" data-v="abrir">Abrir o livro existente</button>
-          <button class="btn btn-outline btn-block" type="button" data-v="salvar">Salvar mesmo assim (outro exemplar)</button>
-          <button class="btn btn-outline btn-block" type="button" data-v="voltar" style="text-align:center">Voltar ao formulário</button>
-        </div>
-        <p class="hint">“Abrir o livro existente” descarta o que você preencheu aqui.</p>`);
+      const esc = await escolherIsbnRepetido(repetido);
       if(esc==='abrir'){ abrirLivro(repetido.id); return; }
       if(esc!=='salvar'){ camadaMain.salvando = false; return; }
     }
@@ -1853,7 +1999,7 @@ document.getElementById('btnImportJson').addEventListener('click', async ()=>{
    ============================================================ */
 fillConfiguracoesForm();
 /* ---- PWA: versão, armazenamento persistente e service worker ---- */
-const APP_VERSION = 'v1_04';
+const APP_VERSION = 'v1_05';
 document.getElementById('appVersaoTxt').textContent = APP_VERSION;
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persist().then(ok=>{

@@ -1,6 +1,6 @@
 # ARQUITETURA.md — App "Livros"
 
-Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_04 em 2026-11-04; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
+Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_05 em 2026-11-04; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
 
 O escopo funcional está em `ESPECIFICACAO.md`; a ordem de entrega e o andamento estão em `PLANO.md`.
 
@@ -109,7 +109,17 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 - **Capa:** `baixarCapa(urls)` tenta, em ordem, a miniatura do Google, a da Open Library e `covers.openlibrary.org/b/isbn/<ISBN13>-M.jpg`; descarta respostas que não são imagem ou com menos de 2 KB (o Google devolve um "sem imagem" minúsculo); reduz com `resizeImage(blob, 360, 0.7)` e guarda como data URL (vai no backup). Se nenhuma baixar (CORS), a revisão avisa e o usuário usa foto/galeria.
 - **Tela de revisão** `abrirRevisaoIsbn(res, atual, aoAplicar)` (sub-sheet, ids `isb-*` — sem `-save`, então não pede confirmação de descarte): uma linha com caixa por campo achado e diferente do formulário. **Marcado por padrão só onde o formulário está vazio** (campo já preenchido mostra "Atual: …" e vem desmarcado; capa atual idem). "Usar marcados" só **preenche o formulário**; **nada é gravado até Salvar** (regra de ouro 8). Autores achados são somados aos já escolhidos: nome igual (sem acento/caixa) reaproveita o cadastro, senão `criarAutorComChecagem` (pergunta se houver nome parecido; nunca une sozinho).
 - O service worker já ignora requisições de outros domínios, então as APIs não passam pelo cache. Sem mudança de esquema (`DB_VERSION` segue 1).
-- Fora do escopo desta versão: scanner de câmera (v1_05) e outras fontes de busca.
+- Fora do escopo desta versão: outras fontes de busca. O scanner de câmera veio na v1_05 (seção 7d).
+
+## 7d. Scanner de código de barras (v1_05)
+
+- **Botão 📷** no formulário do livro, ao lado do campo ISBN (`lv-isbn-scan`). Abre `#scanOverlay` (tela cheia preta, z-index 70: acima das camadas, abaixo da foto ampliada e dos diálogos), que é uma entrada de modal na `navStack` (o voltar do celular fecha só o scanner: `closeScanDom` na cadeia do `popstate`; `camadaTopoAtiva()` devolve `null` com ele aberto, então o voltar não pergunta de descarte do formulário).
+- **Leitura:** `escanearIsbn()` → `getUserMedia` (câmera traseira, 1280×720) + `BarcodeDetector({formats:['ean_13']})` num laço de ~180 ms (`loopLeitura`, encerrado por `_scanId`). Só aceita `97[89]` + 10 dígitos com dígito verificador (`isbnValido`); EAN-13 que não é de livro mostra dica e continua lendo; após 15 s sem leitura mostra dica de uso. Vibra ao ler.
+- **Resultado:** `escanearIsbn()` devolve o ISBN-13 lido, `''` (botão "Digitar à mão": o formulário foca o campo ISBN) ou `null` (voltar/cancelar/sem câmera). `concluirScan(valor)` fecha o scanner e entrega o valor; a câmera é sempre solta (`pararCamera`), inclusive ao ir para segundo plano (`visibilitychange`).
+- **Depois de ler:** preenche o ISBN, mostra o aviso de duplicado e, se o ISBN já existe em outro livro, abre `escolherIsbnRepetido(rep,'leitura')` (abrir o existente / continuar cadastrando / voltar; o mesmo seletor é usado ao salvar). Se não há duplicado (ou o usuário escolhe continuar), dispara a busca online da v1_04 (`btnBusca.click()`), que só mostra a revisão: **nada é gravado até Salvar**.
+- **Lanterna:** botão "🔦 Luz" só aparece se a câmera declarar `torch` (`applyConstraints`).
+- **Sem suporte:** sem `BarcodeDetector` (ou sem EAN-13), sem contexto seguro ou sem `mediaDevices`, o app avisa e o usuário digita o ISBN. Permissão negada, câmera ausente/ocupada têm mensagens próprias (`erroCamera`). **Não há leitor em JavaScript embutido** (o Chrome do Android traz o `BarcodeDetector`); se algum aparelho não tiver, decidir o fallback.
+- Sem mudança de esquema (`DB_VERSION` segue 1); o service worker não precisa de ajuste.
 
 ## 8. Backup (reaproveitado do Preços, adaptado)
 
@@ -130,7 +140,7 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 
 - Reaproveitado (copiado): CSS base, máscaras de valor e quantidade, diálogos, pilha de navegação e camadas, lightbox, `resizeImage`, SW, estrutura do backup, tema.
 - Adaptar nas fases seguintes: módulo de preços (sem quantidade de referência/conversões), gráfico em canvas (progresso de leitura), filtros "+ Filtros".
-- Novo: scanner de código de barras, busca por ISBN, leituras/progresso, anotações com `@personagem`, visões salvas, alerta de backup.
+- Novo: scanner de código de barras (v1_05), busca por ISBN, leituras/progresso, anotações com `@personagem`, visões salvas, alerta de backup.
 
 ## 11. Armadilhas conhecidas
 

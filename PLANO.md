@@ -8,7 +8,7 @@ Uma fase = uma versão = uma sessão (cabe no limite do plano gratuito). A ordem
 | v1_02 | Livros manuais: cadastro, detalhe, grade/lista (+ layout padrão), categorias e subcategorias, próprio/emprestado/desejo, desejo → comprado, exclusão com aviso | publicada |
 | v1_03 | Autores (sugestão, vários por livro, criar sem sair da tela, alerta de semelhança), duplicidade de ISBN (avisa e oferece abrir o existente; ISBN-10 = ISBN-13), tela Mais → Autores; aba Lista de desejos revisada e testada (já vinha da v1_02) | publicada |
 | v1_04 | ISBN digitado + busca online (Google Books / Open Library), tela de revisão, capa | publicada |
-| v1_05 | Scanner de código de barras (câmera) | |
+| v1_05 | Scanner de código de barras (câmera) | feita, aguardando validação no celular e "pode publicar" |
 | v1_06 | Leituras: iniciar, registrar página (aviso de página menor), finalizar, várias leituras, aba Leituras, % nas listagens | |
 | v1_07 | Histórico de progresso: gráfico (com regressões) e lista com editar/excluir discreto | |
 | v1_08 | Personagens e anotações (abas da leitura, todas / por personagem, página, data editável) | |
@@ -20,4 +20,4 @@ Uma fase = uma versão = uma sessão (cabe no limite do plano gratuito). A ordem
 ## Pontos a validar no aparelho do usuário
 
 - v1_04: as APIs de ISBN respondem ao navegador (CORS) e a capa pode ser baixada; senão, capa por foto/galeria. **Não foi possível testar contra as APIs reais na sandbox (rede bloqueada)**: a v1_04 foi testada com respostas simuladas; conferir no celular com um ISBN real (ex.: 9788535914849) se aparece a tela de revisão e se a capa vem.
-- v1_05: `BarcodeDetector` funciona no Chrome dele; senão, decidir fallback.
+- v1_05: `BarcodeDetector` funciona no Chrome dele (a sandbox testou com leitor e câmera simulados, não com câmera real); senão, decidir fallback. Conferir também: permissão da câmera, a leitura de um código de verdade e a Luz.
