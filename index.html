@@ -368,6 +368,19 @@ header .sub{color:#E6D2D6;}
 .aviso-isbn:empty{display:none;}
 .cat-linha .nome.clicavel{cursor:pointer;}
 .escolha-lista .btn{margin-bottom:8px;text-align:left;}
+/* ---- Busca online por ISBN (v1_04): botão ao lado do campo e tela de revisão ---- */
+.isbn-linha{display:flex;gap:8px;align-items:stretch;}
+.isbn-linha input{flex:1;min-width:0;}
+.isbn-linha .btn{flex:none;white-space:nowrap;}
+.rev-row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;margin:0;border-bottom:1px solid var(--line);cursor:pointer;text-transform:none;letter-spacing:0;font-size:14px;font-weight:400;color:var(--ink);}
+.rev-row input[type=checkbox]{width:22px;height:22px;flex:none;margin-top:1px;padding:0;accent-color:var(--accent);}
+.rev-row .rv{min-width:0;flex:1;}
+.rev-row .rk{font-size:12px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.3px;}
+.rev-row .rn{font-size:14px;overflow-wrap:anywhere;}
+.rev-row .ra{font-size:12px;color:var(--ink-soft);margin-top:3px;overflow-wrap:anywhere;}
+.rev-row .rcapa{display:flex;gap:10px;align-items:flex-end;margin-top:4px;}
+.rev-row .rcapa img{width:64px;height:96px;object-fit:cover;border-radius:6px;border:1px solid var(--line);}
+.rev-row .rcapa .rcl{font-size:11px;color:var(--ink-soft);text-align:center;}
 </style>
 </head>
 <body>
@@ -1204,6 +1217,114 @@ function livroComIsbn(isbn, ignorarId){
   return LIVROS.find(l=> l.id!==ignorarId && isbnChave(l.isbn)===k) || null;
 }
 
+/* ---- Busca online por ISBN (v1_04): Google Books + Open Library, nada é gravado sem revisão ---- */
+function isbnValido(s){
+  const t = (s||'').replace(/[\s-]/g,'').toUpperCase();
+  if(/^\d{13}$/.test(t)){
+    let soma = 0; for(let i=0;i<12;i++) soma += Number(t[i])*(i%2 ? 3 : 1);
+    return (10 - soma%10)%10 === Number(t[12]);
+  }
+  if(/^\d{9}[\dX]$/.test(t)){
+    let soma = 0; for(let i=0;i<9;i++) soma += Number(t[i])*(10-i);
+    soma += t[9]==='X' ? 10 : Number(t[9]);
+    return soma%11===0;
+  }
+  return false;
+}
+async function fetchComTimeout(url, ms){
+  const ctl = new AbortController();
+  const tm = setTimeout(()=>ctl.abort(), ms||8000);
+  try{
+    const r = await fetch(url, {signal: ctl.signal});
+    if(!r.ok) throw new Error('http '+r.status);
+    return r;
+  } finally { clearTimeout(tm); }
+}
+function limpaTexto(s){ return (s||'').replace(/<br\s*\/?>|<\/p>|<\/li>/gi,'\n').replace(/<[^>]*>/g,'').replace(/&nbsp;/g,' ').replace(/&amp;/g,'&').replace(/&quot;/g,'"').replace(/&#39;/g,"'").replace(/[ \t]+/g,' ').replace(/\s*\n\s*/g,'\n').trim(); }
+async function consultaGoogleBooks(chave){
+  const j = await (await fetchComTimeout(`https://www.googleapis.com/books/v1/volumes?q=isbn:${chave}&maxResults=3`)).json();
+  const itens = j.items || [];
+  if(!itens.length) return null;
+  const it = itens.find(x=> (x.volumeInfo.industryIdentifiers||[]).some(i=> isbnChave(i.identifier)===chave)) || itens[0];
+  const v = it.volumeInfo || {};
+  let capa = v.imageLinks && (v.imageLinks.thumbnail || v.imageLinks.smallThumbnail) || '';
+  capa = capa.replace(/^http:/,'https:').replace('&edge=curl','');
+  return { titulo:v.title||'', subtitulo:v.subtitle||'', autores:v.authors||[], paginas:v.pageCount||null, descricao:limpaTexto(v.description), capaUrl:capa };
+}
+async function consultaOpenLibrary(chave){
+  const j = await (await fetchComTimeout(`https://openlibrary.org/api/books?bibkeys=ISBN:${chave}&format=json&jscmd=data`)).json();
+  const v = j['ISBN:'+chave];
+  if(!v) return null;
+  return { titulo:v.title||'', subtitulo:v.subtitle||'', autores:(v.authors||[]).map(a=>a.name).filter(Boolean), paginas:v.number_of_pages||null, descricao:'', capaUrl:(v.cover && (v.cover.medium||v.cover.large)) || '' };
+}
+/* Devolve {dados, fontes[]} | {naoEncontrado:true} | {erroRede:true}. Google tem prioridade; Open Library completa o que faltar. */
+async function buscarIsbnOnline(isbn){
+  const chave = isbnChave(isbn);
+  const rs = await Promise.allSettled([consultaGoogleBooks(chave), consultaOpenLibrary(chave)]);
+  const g = rs[0].status==='fulfilled' ? rs[0].value : null;
+  const o = rs[1].status==='fulfilled' ? rs[1].value : null;
+  if(!g && !o) return rs.every(r=>r.status==='rejected') ? {erroRede:true} : {naoEncontrado:true};
+  const fontes = [g && 'Google Books', o && 'Open Library'].filter(Boolean);
+  const m = {titulo:'', subtitulo:'', autores:[], paginas:null, descricao:'', capaUrl:''};
+  for(const src of [g,o]){
+    if(!src) continue;
+    for(const k of Object.keys(m)){
+      const vazio = Array.isArray(m[k]) ? !m[k].length : !m[k];
+      if(vazio && src[k]) m[k] = src[k];
+    }
+  }
+  m.capaUrls = [g && g.capaUrl, o && o.capaUrl, `https://covers.openlibrary.org/b/isbn/${chave}-M.jpg?default=false`].filter(Boolean);
+  return {dados:m, fontes};
+}
+/* Tenta baixar a capa (as imagens costumam vir sem CORS; se falhar, o usuário usa foto/galeria). Devolve data URL ou ''. */
+async function baixarCapa(urls){
+  for(const u of urls){
+    try{
+      const b = await (await fetchComTimeout(u, 10000)).blob();
+      if(!/^image\//.test(b.type) || b.size < 2000) continue;   // Google devolve um "sem imagem" minúsculo
+      return await resizeImage(b, 360, 0.7);
+    }catch(e){}
+  }
+  return '';
+}
+/* Tela de revisão: cada campo achado tem uma caixa. Marcado por padrão só onde o formulário está vazio. */
+function abrirRevisaoIsbn(res, atual, aoAplicar){
+  const d = res.dados;
+  const linhas = [];
+  const add = (id, rot, novo, atualTxt, extra)=> linhas.push({id, rot, novo, atualTxt, extra});
+  const difere = (a,b)=> (a||'').toString().trim() !== (b||'').toString().trim();
+  if(d.titulo && difere(d.titulo, atual.titulo)) add('titulo','Título', d.titulo, atual.titulo);
+  if(d.subtitulo && difere(d.subtitulo, atual.subtitulo)) add('subtitulo','Subtítulo', d.subtitulo, atual.subtitulo);
+  const nomesAtuais = atual.autores.map(normalizeNome);
+  const novosAut = d.autores.map(limpaNome).filter(n=> n && !nomesAtuais.includes(normalizeNome(n)));
+  if(novosAut.length) add('autores', novosAut.length>1?'Autores':'Autor', novosAut.join(', '), atual.autores.join(', '));
+  if(d.paginas && Number(d.paginas)!==Number(atual.paginas)) add('paginas','Páginas', String(d.paginas), atual.paginas ? String(atual.paginas) : '');
+  if(d.descricao && difere(d.descricao, atual.descricao)) add('descricao','Descrição', d.descricao.length>400 ? d.descricao.slice(0,400)+'…' : d.descricao, atual.descricao ? (atual.descricao.length>120 ? atual.descricao.slice(0,120)+'…' : atual.descricao) : '');
+  if(d.capaData) add('capa','Capa', '', '', true);
+  if(!linhas.length){ avisar('Encontrei o livro, mas não há nada novo além do que já está no formulário.'); return; }
+  const html = `<h3>Dados encontrados</h3>
+    <p class="hint" style="margin-top:0">Fonte: ${res.fontes.join(' + ')}. Marque o que quer usar no formulário; nada é salvo até você tocar em Salvar no livro.</p>
+    <div id="isb-lista">${linhas.map(r=>{
+      const marcado = !r.atualTxt && !(r.id==='capa' && atual.capa);
+      const corpo = r.id==='capa'
+        ? `<div class="rcapa"><div><img src="${d.capaData}" alt=""><div class="rcl">Encontrada</div></div>${atual.capa ? `<div><img src="${atual.capa}" alt=""><div class="rcl">Atual</div></div>` : ''}</div>`
+        : `<div class="rn">${escapeHtml(r.novo)}</div>${r.atualTxt ? `<div class="ra">Atual: ${escapeHtml(r.atualTxt)}</div>` : ''}`;
+      return `<label class="rev-row"><input type="checkbox" data-c="${r.id}" ${marcado?'checked':''}><div class="rv"><div class="rk">${r.rot}</div>${corpo}</div></label>`;
+    }).join('')}</div>
+    ${res.capaFalhou ? '<p class="hint">Não consegui baixar a capa por aqui. Se quiser, escolha uma foto/imagem no campo Capa do formulário.</p>' : (!d.capaData ? '<p class="hint">Nenhuma capa encontrada para este ISBN.</p>' : '')}
+    <div class="sheet-actions">
+      <button class="btn btn-outline" id="isb-cancel" type="button" style="flex:1">Cancelar</button>
+      <button class="btn btn-accent" id="isb-aplicar" type="button" style="flex:1">Usar marcados</button>
+    </div>`;
+  openSubSheet(html);
+  document.getElementById('isb-cancel').addEventListener('click', ()=> closeSubSheet());
+  document.getElementById('isb-aplicar').addEventListener('click', ()=>{
+    const marc = new Set([...document.querySelectorAll('#isb-lista input[data-c]:checked')].map(x=>x.dataset.c));
+    closeSubSheet();
+    if(marc.size) aoAplicar(marc, {...d, autores:novosAut});
+  });
+}
+
 function livroItemHTML(l){
   const capa = l.capa ? `<img class="capa" src="${l.capa}" alt="">` : `<div class="capa capa-ph">📕</div>`;
   const tit = `<div class="livro-tit">${escapeHtml(l.titulo)}</div>`;
@@ -1290,7 +1411,8 @@ function abrirFormLivro(id, situacaoInicial){
     <div class="sel-linha"><select id="lv-cat"></select><button class="btn btn-outline btn-sm" id="lv-cat-novo" type="button">+</button></div>
     <label>Subcategoria</label>
     <div class="sel-linha"><select id="lv-sub"></select><button class="btn btn-outline btn-sm" id="lv-sub-novo" type="button">+</button></div>
-    <label>ISBN</label><input type="text" id="lv-isbn" inputmode="numeric" value="${escapeHtml(v.isbn||'')}" autocomplete="off">
+    <label>ISBN</label>
+    <div class="isbn-linha"><input type="text" id="lv-isbn" inputmode="numeric" value="${escapeHtml(v.isbn||'')}" autocomplete="off" placeholder="10 ou 13 números"><button class="btn btn-outline btn-sm" id="lv-isbn-busca" type="button">🔍 Buscar</button></div>
     <div class="aviso-isbn" id="lv-isbn-aviso"></div>
     <label>Páginas</label><input type="number" id="lv-paginas" inputmode="numeric" min="1" value="${v.paginas||''}">
     <label>Capa</label>
@@ -1376,6 +1498,43 @@ function abrirFormLivro(id, situacaoInicial){
   };
   isbnEl.addEventListener('input', avisoIsbn);
   avisoIsbn();
+  /* Buscar online: mostra a tela de revisão; só preenche o formulário (nada é gravado até Salvar) */
+  const btnBusca = $('lv-isbn-busca');
+  const aplicaEncontrados = async (marc, d)=>{
+    if(marc.has('titulo')) $('lv-titulo').value = d.titulo;
+    if(marc.has('subtitulo')) $('lv-subtitulo').value = d.subtitulo;
+    if(marc.has('paginas')) $('lv-paginas').value = d.paginas;
+    if(marc.has('descricao')){ $('lv-descricao').value = d.descricao; autoGrow($('lv-descricao')); }
+    if(marc.has('capa') && d.capaData){ capa = d.capaData; pintaCapa(); }
+    if(marc.has('autores')){
+      for(const nome of d.autores){
+        const igual = AUTORES.find(a=> normalizeNome(a.nome)===normalizeNome(nome));
+        if(igual){ adicionaAutor(igual.id); continue; }
+        const id2 = await criarAutorComChecagem(nome);   // pergunta se houver nome parecido; nunca une sozinho
+        if(id2!=null) adicionaAutor(id2);
+      }
+    }
+    marcaAlt();
+  };
+  btnBusca.addEventListener('click', async ()=>{
+    const isbn = isbnEl.value.trim();
+    if(!isbn){ avisar('Digite o ISBN primeiro.'); return; }
+    if(!isbnValido(isbn)){ avisar('Esse ISBN não parece válido. Confira os dígitos (10 ou 13 números).'); return; }
+    if(!navigator.onLine){ avisar('Sem internet agora. A busca online precisa de conexão; você pode preencher o livro à mão.'); return; }
+    btnBusca.disabled = true; btnBusca.textContent = 'Buscando…';
+    try{
+      const res = await buscarIsbnOnline(isbn);
+      if(res.erroRede){ avisar('Não consegui falar com as bases de livros (Google Books e Open Library). Verifique a internet e tente de novo.'); return; }
+      if(res.naoEncontrado){ avisar('Nenhuma das bases (Google Books e Open Library) conhece esse ISBN. Preencha à mão.'); return; }
+      res.dados.capaData = await baixarCapa(res.dados.capaUrls);
+      res.capaFalhou = !res.dados.capaData && res.dados.capaUrls.length>0;
+      abrirRevisaoIsbn(res, {
+        titulo: $('lv-titulo').value, subtitulo: $('lv-subtitulo').value,
+        autores: autorIds.map(nomeAutor), paginas: $('lv-paginas').value,
+        descricao: $('lv-descricao').value, capa
+      }, aplicaEncontrados);
+    } finally { btnBusca.disabled = false; btnBusca.textContent = '🔍 Buscar'; }
+  });
   catSel.addEventListener('change', ()=> preencheSubs(Number(catSel.value)||undefined));
   ['lv-descricao','lv-comentarios'].forEach(t=>{ const el=$(t); autoGrow(el); el.addEventListener('input', ()=>autoGrow(el)); });
   $('lv-capa-file').addEventListener('change', async e=>{
@@ -1694,7 +1853,7 @@ document.getElementById('btnImportJson').addEventListener('click', async ()=>{
    ============================================================ */
 fillConfiguracoesForm();
 /* ---- PWA: versão, armazenamento persistente e service worker ---- */
-const APP_VERSION = 'v1_03';
+const APP_VERSION = 'v1_04';
 document.getElementById('appVersaoTxt').textContent = APP_VERSION;
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persist().then(ok=>{

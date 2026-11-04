@@ -1,6 +1,6 @@
 # ARQUITETURA.md — App "Livros"
 
-Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_02 em 2026-11-04; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
+Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_04 em 2026-11-04; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
 
 O escopo funcional está em `ESPECIFICACAO.md`; a ordem de entrega e o andamento estão em `PLANO.md`.
 
@@ -101,6 +101,15 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 - **Tela Mais → Autores** (`view-autores`, `renderAutores`): lista com contagem de livros; tocar no nome abre os livros do autor (`abrirAutor`); renomear; excluir (avisa quantos livros perdem o autor).
 - **ISBN repetido:** `isbnChave` limpa hífens/espaços e converte ISBN-10 válido em ISBN-13 (mesma chave = mesmo livro); `livroComIsbn(isbn, ignorarId)`. O formulário mostra aviso na hora; ao salvar, **só se o ISBN é novo ou mudou**, o seletor oferece "Abrir o livro existente" (descarta o formulário) / "Salvar mesmo assim (outro exemplar)" / "Voltar". Sem ISBN, nenhuma regra por título.
 - Sem mudança de esquema: store `autores` já existia (`DB_VERSION` segue 1) e o backup é genérico.
+
+## 7c. ISBN digitado e busca online (v1_04)
+
+- **Botão "🔍 Buscar"** ao lado do campo ISBN do formulário (`lv-isbn-busca`). Valida o ISBN (`isbnValido`, com dígito verificador, ISBN-10 e ISBN-13), exige internet e consulta **Google Books** (`consultaGoogleBooks`) e **Open Library** (`consultaOpenLibrary`) em paralelo, 8 s de limite cada (`fetchComTimeout`).
+- `buscarIsbnOnline(isbn)` devolve `{dados, fontes}`, `{naoEncontrado}` ou `{erroRede}`. **Google tem prioridade; a Open Library só completa campo vazio** (não mistura listas: se o Google trouxe autores, os da Open Library são ignorados). Descrição passa por `limpaTexto` (remove HTML).
+- **Capa:** `baixarCapa(urls)` tenta, em ordem, a miniatura do Google, a da Open Library e `covers.openlibrary.org/b/isbn/<ISBN13>-M.jpg`; descarta respostas que não são imagem ou com menos de 2 KB (o Google devolve um "sem imagem" minúsculo); reduz com `resizeImage(blob, 360, 0.7)` e guarda como data URL (vai no backup). Se nenhuma baixar (CORS), a revisão avisa e o usuário usa foto/galeria.
+- **Tela de revisão** `abrirRevisaoIsbn(res, atual, aoAplicar)` (sub-sheet, ids `isb-*` — sem `-save`, então não pede confirmação de descarte): uma linha com caixa por campo achado e diferente do formulário. **Marcado por padrão só onde o formulário está vazio** (campo já preenchido mostra "Atual: …" e vem desmarcado; capa atual idem). "Usar marcados" só **preenche o formulário**; **nada é gravado até Salvar** (regra de ouro 8). Autores achados são somados aos já escolhidos: nome igual (sem acento/caixa) reaproveita o cadastro, senão `criarAutorComChecagem` (pergunta se houver nome parecido; nunca une sozinho).
+- O service worker já ignora requisições de outros domínios, então as APIs não passam pelo cache. Sem mudança de esquema (`DB_VERSION` segue 1).
+- Fora do escopo desta versão: scanner de câmera (v1_05) e outras fontes de busca.
 
 ## 8. Backup (reaproveitado do Preços, adaptado)
 
