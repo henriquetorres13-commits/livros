@@ -352,6 +352,22 @@ header .sub{color:#E6D2D6;}
 .cat-sub{margin:6px 0 0 14px;padding-top:6px;border-top:1px dashed var(--line);}
 .cat-sub .nome{font-weight:400;font-size:14px;}
 .cat-linha .btn-xs{flex:none;}
+
+/* ---- Autores (v1_03): chips no formulário do livro, sugestões, tela de autores ---- */
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;}
+.chips:empty{display:none;}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--accent-soft);color:var(--accent);border-radius:20px;padding:4px 4px 4px 11px;font-size:13px;font-weight:700;max-width:100%;}
+.chip span{min-width:0;overflow-wrap:anywhere;}
+.chip button{background:none;color:inherit;font-size:15px;line-height:1;width:24px;height:24px;border-radius:50%;padding:0;flex:none;}
+.chip button:active{background:rgba(0,0,0,.12);}
+.sug-lista{margin-top:2px;}
+.sug{display:block;width:100%;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:6px;font-size:14px;}
+.sug:active{background:var(--paper-alt);}
+.sug.sug-novo{color:var(--accent);font-weight:700;border-style:dashed;}
+.aviso-isbn{font-size:12px;color:var(--accent);margin-top:5px;}
+.aviso-isbn:empty{display:none;}
+.cat-linha .nome.clicavel{cursor:pointer;}
+.escolha-lista .btn{margin-bottom:8px;text-align:left;}
 </style>
 </head>
 <body>
@@ -402,9 +418,19 @@ header .sub{color:#E6D2D6;}
   <section class="view" id="view-mais">
     <h2 class="section-title">Mais</h2>
     <button class="btn btn-outline btn-block" id="btnGoInicio" type="button" style="margin-bottom:10px;text-align:left">🏠 Tela de atalhos</button>
+    <button class="btn btn-outline btn-block" id="btnGoAutores" type="button" style="margin-bottom:10px;text-align:left">✍️ Autores</button>
     <button class="btn btn-outline btn-block" id="btnGoCategorias" type="button" style="margin-bottom:10px;text-align:left">🏷️ Categorias de livros</button>
     <button class="btn btn-outline btn-block" id="btnGoExportar" type="button" style="margin-bottom:10px;text-align:left">📤 Backup e restauração</button>
     <button class="btn btn-outline btn-block" id="btnGoConfiguracoes" type="button" style="text-align:left">⚙️ Configurações</button>
+  </section>
+
+  <!-- ================= AUTORES ================= -->
+  <section class="view" id="view-autores">
+    <button class="btn btn-outline btn-sm" id="btnVoltarMaisAutores" type="button" style="margin-bottom:12px">← Voltar</button>
+    <h2 class="section-title">Autores</h2>
+    <p class="hint" style="margin-top:0;margin-bottom:10px">Toque no nome para ver os livros do autor. Autores novos também podem ser criados direto no cadastro do livro.</p>
+    <div id="autores-lista"></div>
+    <button class="btn btn-accent btn-block" id="btnNovoAutor" type="button">+ Novo autor</button>
   </section>
 
   <!-- ================= CATEGORIAS DE LIVROS ================= -->
@@ -947,9 +973,36 @@ function closeLayer(level){
 }
 
 
-/* Seletor sobreposto (z-index 65): reservado para seletores de autores/categorias nas próximas versões. */
+/* Seletor sobreposto (z-index 65): escolhas rápidas por cima de qualquer camada (autor parecido, ISBN repetido).
+   escolherNoPicker(html) mostra botões com data-v="valor" e devolve o valor tocado; null se o usuário voltar/tocar fora. */
 const pickerOverlay = document.getElementById('pickerOverlay');
-function closePickerDom(){ pickerOverlay.classList.remove('active'); document.getElementById('pickerSheet').innerHTML=''; }
+let _pickerResolve = null;
+function closePickerDom(){
+  pickerOverlay.classList.remove('active'); document.getElementById('pickerSheet').innerHTML='';
+  if(_pickerResolve){ const r=_pickerResolve; _pickerResolve=null; r(null); }   // fechado por fora (voltar do celular)
+}
+function fecharPicker(){
+  if(!pickerOverlay.classList.contains('active')) return;
+  closePickerDom(); consumeModalHistory();
+}
+function escolherNoPicker(html){
+  return new Promise(resolve=>{
+    if(_pickerResolve){ const r=_pickerResolve; _pickerResolve=null; r(null); }
+    _pickerResolve = resolve;
+    const jaAberto = pickerOverlay.classList.contains('active');
+    document.getElementById('pickerSheet').innerHTML = html;
+    pickerOverlay.classList.add('active');
+    if(!jaAberto) pushModalHistory();
+  });
+}
+document.getElementById('pickerSheet').addEventListener('click', e=>{
+  const b = e.target.closest('[data-v]');
+  if(!b || !_pickerResolve) return;
+  const r = _pickerResolve; _pickerResolve = null;
+  fecharPicker();
+  r(b.dataset.v);
+});
+pickerOverlay.addEventListener('click', e=>{ if(e.target===pickerOverlay) fecharPicker(); });
 
 /* ---- Foto ampliada (lightbox) ---- */
 const lightbox = document.getElementById('lightbox');
@@ -974,8 +1027,8 @@ document.body.addEventListener('click', (e)=>{
    Barra inferior (4 áreas + Mais) = telas RAIZ: zeram a pilha. Atalhos dentro das telas empilham.
    ============================================================ */
 const TITULOS = {inicio:'Atalhos', biblioteca:'Biblioteca', desejos:'Lista de desejos', leituras:'Leituras', pesquisa:'Pesquisa',
-  mais:'Mais', exportar:'Backup', configuracoes:'Configurações', categorias:'Categorias'};
-const VIEWS_DO_MAIS = ['inicio','exportar','configuracoes','categorias'];
+  mais:'Mais', exportar:'Backup', configuracoes:'Configurações', categorias:'Categorias', autores:'Autores'};
+const VIEWS_DO_MAIS = ['inicio','exportar','configuracoes','categorias','autores'];
 let viewAtual = null;
 let currentTab = null;
 function zerarPilhaTelas(){
@@ -1023,6 +1076,7 @@ function renderCurrent(){
   document.getElementById('fabAdd').style.display = (currentTab==='biblioteca' || currentTab==='desejos') ? 'flex' : 'none';
   if(currentTab==='biblioteca' || currentTab==='desejos') renderLivros(currentTab);
   if(currentTab==='categorias') renderCategorias();
+  if(currentTab==='autores') renderAutores();
   if(currentTab==='exportar') renderBackupInfo();
 }
 
@@ -1036,6 +1090,8 @@ document.getElementById('btnGoInicio').addEventListener('click', ()=> switchView
 document.getElementById('btnGoExportar').addEventListener('click', ()=> switchView('exportar', {raiz:true}));
 document.getElementById('btnGoCategorias').addEventListener('click', ()=> switchView('categorias', {raiz:true}));
 document.getElementById('btnVoltarMaisCats').addEventListener('click', ()=> switchView('mais', {raiz:true}));
+document.getElementById('btnGoAutores').addEventListener('click', ()=> switchView('autores', {raiz:true}));
+document.getElementById('btnVoltarMaisAutores').addEventListener('click', ()=> switchView('mais', {raiz:true}));
 document.getElementById('btnGoConfiguracoes').addEventListener('click', ()=> switchView('configuracoes', {raiz:true}));
 document.getElementById('btnVoltarMaisExportar').addEventListener('click', ()=> switchView('mais', {raiz:true}));
 document.getElementById('btnVoltarMaisConfig').addEventListener('click', ()=> switchView('mais', {raiz:true}));
@@ -1067,7 +1123,8 @@ document.getElementById('cfg-theme-dark').addEventListener('click', ()=>{
 /* ============================================================
    LIVROS (v1_02): cadastro manual, detalhe, grade/lista, desejo -> comprado, exclusão com aviso
    Situação do livro: 'desejo' (aba Desejos) | 'proprio' | 'emprestado' (aba Biblioteca).
-   Autores, leituras, preços etc. entram nas próximas versões; a exclusão já leva os dados ligados ao livro.
+   v1_03: autores (vários por livro, sugestão ao digitar, alerta de nome parecido) e aviso de ISBN repetido.
+   Leituras, preços etc. entram nas próximas versões; a exclusão já leva os dados ligados ao livro.
    ============================================================ */
 const SITUACOES = {proprio:'Próprio', emprestado:'Emprestado', desejo:'Desejo'};
 let layoutTela = CONFIG.layoutPadrao;   // grade | lista: alternável na própria tela; reinicia com o padrão das configurações
@@ -1077,6 +1134,76 @@ function nomeCategoria(l){
   const s = SUBCATS.find(x=>x.id===l.subcategoriaId);
   return c ? (c.nome + (s ? ' › '+s.nome : '')) : '';
 }
+/* ---- Autores: nomes, semelhança, criação com alerta (v1_03) ---- */
+function nomeAutor(id){ const a = AUTORES.find(x=>x.id===id); return a ? a.nome : ''; }
+function nomesAutores(l){ return (l.autorIds||[]).map(nomeAutor).filter(Boolean); }
+function limpaNome(s){ return (s||'').replace(/\s+/g,' ').trim(); }
+/* a e b já normalizados (normalizeNome). Só gera alerta: nunca decide nada sozinho. */
+function nomesSemelhantes(a, b){
+  if(!a || !b) return false;
+  const ca = a.replace(/ /g,''), cb = b.replace(/ /g,'');
+  if(ca===cb) return true;                                   // J. K. Rowling × JK Rowling
+  const ta = a.split(' '), tb = b.split(' ');
+  if([...ta].sort().join(' ')===[...tb].sort().join(' ')) return true;   // ordem trocada
+  const lim = Math.max(ca.length, cb.length) <= 6 ? 1 : (Math.max(ca.length, cb.length) <= 14 ? 2 : 3);
+  if(levenshtein(ca, cb) <= lim) return true;                // erro de digitação
+  const [curto, longo] = ta.length<=tb.length ? [ta, tb] : [tb, ta];
+  const setLongo = new Set(longo);
+  if(curto.length < longo.length && curto.every(t=>setLongo.has(t)) && (curto.length>=2 || curto[0].length>=5)) return true;   // Machado de Assis × Joaquim Maria Machado de Assis
+  return false;
+}
+function autoresParecidos(nome, ignorarId){
+  const n = normalizeNome(nome);
+  const exatos = [], parecidos = [];
+  AUTORES.forEach(a=>{
+    if(a.id===ignorarId) return;
+    const m = normalizeNome(a.nome);
+    if(m===n) exatos.push(a); else if(nomesSemelhantes(n, m)) parecidos.push(a);
+  });
+  return {exatos, parecidos};
+}
+/* Cria um autor. Nome igual ou parecido a um existente: mostra a escolha (usar o existente / criar outro / cancelar).
+   Devolve o id (novo ou existente) ou null se cancelou. */
+async function criarAutorComChecagem(nomeBruto){
+  const nome = limpaNome(nomeBruto);
+  if(!nome) return null;
+  const {exatos, parecidos} = autoresParecidos(nome);
+  const similares = exatos.concat(parecidos).slice(0, 6);
+  if(similares.length){
+    const titulo = exatos.length ? 'Já existe um autor com este nome' : 'Autor com nome parecido';
+    const esc = await escolherNoPicker(`<h3>${titulo}</h3>
+      <p class="hint" style="margin-top:0">Você digitou “${escapeHtml(nome)}”. Nomes parecidos podem ser pessoas diferentes: escolha o que fazer.</p>
+      <div class="escolha-lista">
+        ${similares.map(a=>`<button class="btn btn-outline btn-block" type="button" data-v="usar:${a.id}">Usar “${escapeHtml(a.nome)}”</button>`).join('')}
+        <button class="btn btn-accent btn-block" type="button" data-v="criar">Criar “${escapeHtml(nome)}” como outro autor</button>
+        <button class="btn btn-outline btn-block" type="button" data-v="cancelar" style="text-align:center">Cancelar</button>
+      </div>`);
+    if(!esc || esc==='cancelar') return null;
+    if(esc.startsWith('usar:')) return Number(esc.slice(5));
+  }
+  const id = await putRecord('autores', {nome});
+  await reloadAll(); renderCurrent();
+  return id;
+}
+
+/* ---- ISBN: chave comparável e livro repetido (v1_03) ---- */
+function isbnChave(s){
+  const t = (s||'').replace(/[\s-]/g,'').toUpperCase();
+  if(!t) return '';
+  if(/^\d{13}$/.test(t)) return t;
+  if(/^\d{9}[\dX]$/.test(t)){            // ISBN-10 vira ISBN-13: é o mesmo livro
+    const base = '978'+t.slice(0,9);
+    let soma = 0; for(let i=0;i<12;i++) soma += Number(base[i])*(i%2 ? 3 : 1);
+    return base + ((10 - soma%10)%10);
+  }
+  return t;                              // formato fora do padrão: compara o texto limpo
+}
+function livroComIsbn(isbn, ignorarId){
+  const k = isbnChave(isbn);
+  if(!k) return null;
+  return LIVROS.find(l=> l.id!==ignorarId && isbnChave(l.isbn)===k) || null;
+}
+
 function livroItemHTML(l){
   const capa = l.capa ? `<img class="capa" src="${l.capa}" alt="">` : `<div class="capa capa-ph">📕</div>`;
   const tit = `<div class="livro-tit">${escapeHtml(l.titulo)}</div>`;
@@ -1113,6 +1240,7 @@ function abrirLivro(id){
     </div></div>
     <div style="margin-top:12px">
       ${l.situacao==='emprestado' ? kv('Emprestado de', l.emprestadoDe) : ''}
+      ${kv(nomesAutores(l).length>1 ? 'Autores' : 'Autor', nomesAutores(l).join(', '))}
       ${kv('Categoria', nomeCategoria(l))}
       ${kv('ISBN', l.isbn)}
       ${kv('Páginas', l.paginas)}
@@ -1142,10 +1270,15 @@ function abrirFormLivro(id, situacaoInicial){
   const l = id!=null ? LIVROS.find(x=>x.id===id) : null;
   const v = l || {situacao: situacaoInicial || 'proprio'};
   let capa = v.capa || '';
+  let autorIds = (v.autorIds||[]).filter(a=> AUTORES.some(x=>x.id===a));
   openSheet(`<h3>${l ? 'Editar livro' : 'Novo livro'}</h3>
     <div class="tr-form">
     <label>Título *</label><input type="text" id="lv-titulo" value="${escapeHtml(v.titulo||'')}" autocomplete="off">
     <label>Subtítulo</label><input type="text" id="lv-subtitulo" value="${escapeHtml(v.subtitulo||'')}" autocomplete="off">
+    <label>Autores</label>
+    <div class="chips" id="lv-autores-chips"></div>
+    <input type="text" id="lv-autor-busca" placeholder="Digite para buscar ou criar autor" autocomplete="off">
+    <div class="sug-lista" id="lv-autor-sug"></div>
     <label>Situação</label>
     <select id="lv-situacao">
       <option value="proprio" ${v.situacao==='proprio'?'selected':''}>Próprio</option>
@@ -1158,6 +1291,7 @@ function abrirFormLivro(id, situacaoInicial){
     <label>Subcategoria</label>
     <div class="sel-linha"><select id="lv-sub"></select><button class="btn btn-outline btn-sm" id="lv-sub-novo" type="button">+</button></div>
     <label>ISBN</label><input type="text" id="lv-isbn" inputmode="numeric" value="${escapeHtml(v.isbn||'')}" autocomplete="off">
+    <div class="aviso-isbn" id="lv-isbn-aviso"></div>
     <label>Páginas</label><input type="number" id="lv-paginas" inputmode="numeric" min="1" value="${v.paginas||''}">
     <label>Capa</label>
     <div class="photo-pick"><div id="lv-capa-prev"></div>
@@ -1189,6 +1323,59 @@ function abrirFormLivro(id, situacaoInicial){
   };
   atualizaEmp(); preencheCats(v.categoriaId, v.subcategoriaId); pintaCapa();
   sitSel.addEventListener('change', atualizaEmp);
+
+  /* Autores: chips dos escolhidos + busca com sugestões; criar novo sem sair do formulário */
+  const buscaEl = $('lv-autor-busca'), sugEl = $('lv-autor-sug');
+  const marcaAlt = ()=>{ camadaMain.dirty = true; camadaMain.salvando = false; };
+  const pintaAutores = ()=>{
+    $('lv-autores-chips').innerHTML = autorIds.map(a=>`<span class="chip"><span>${escapeHtml(nomeAutor(a))}</span><button type="button" data-rm="${a}" aria-label="Remover autor">✕</button></span>`).join('');
+  };
+  const pintaSugestoes = ()=>{
+    const q = limpaNome(buscaEl.value), nq = normalizeNome(q);
+    if(!nq){ sugEl.innerHTML = ''; return; }
+    const tokens = nq.split(' ');
+    const lista = AUTORES.filter(a=>{ const m = normalizeNome(a.nome); return !autorIds.includes(a.id) && tokens.every(t=>m.includes(t)); })
+      .sort((a,b)=>{
+        const sa = normalizeNome(a.nome).startsWith(nq) ? 0 : 1, sb = normalizeNome(b.nome).startsWith(nq) ? 0 : 1;
+        return sa-sb || a.nome.localeCompare(b.nome, 'pt-BR');
+      }).slice(0, 6);
+    sugEl.innerHTML = lista.map(a=>`<button class="sug" type="button" data-add="${a.id}">${escapeHtml(a.nome)}</button>`).join('')
+      + `<button class="sug sug-novo" type="button" data-novo="1">+ Criar autor “${escapeHtml(q)}”</button>`;
+  };
+  const limpaBusca = ()=>{ buscaEl.value = ''; sugEl.innerHTML = ''; };
+  const adicionaAutor = (id2)=>{ if(id2!=null && !autorIds.includes(id2)) autorIds.push(id2); pintaAutores(); limpaBusca(); marcaAlt(); };
+  const criaDaBusca = async ()=>{
+    const id2 = await criarAutorComChecagem(buscaEl.value);
+    if(id2!=null) adicionaAutor(id2); else marcaAlt();
+  };
+  pintaAutores();
+  buscaEl.addEventListener('input', pintaSugestoes);
+  buscaEl.addEventListener('keydown', e=>{
+    if(e.key!=='Enter') return;
+    e.preventDefault();
+    const nq = normalizeNome(limpaNome(buscaEl.value)); if(!nq) return;
+    const igual = AUTORES.find(a=> !autorIds.includes(a.id) && normalizeNome(a.nome)===nq);
+    if(igual) adicionaAutor(igual.id); else criaDaBusca();
+  });
+  sugEl.addEventListener('click', e=>{
+    const b = e.target.closest('button'); if(!b) return;
+    camadaMain.salvando = false;
+    if(b.dataset.add) adicionaAutor(Number(b.dataset.add));
+    else if(b.dataset.novo) criaDaBusca();
+  });
+  $('lv-autores-chips').addEventListener('click', e=>{
+    const b = e.target.closest('button[data-rm]'); if(!b) return;
+    autorIds = autorIds.filter(a=> a!==Number(b.dataset.rm));
+    pintaAutores(); marcaAlt();
+  });
+  /* ISBN: aviso na hora se já existe (a escolha final vem ao salvar) */
+  const isbnEl = $('lv-isbn');
+  const avisoIsbn = ()=>{
+    const d = livroComIsbn(isbnEl.value, l ? l.id : undefined);
+    $('lv-isbn-aviso').textContent = d ? `⚠ Já existe um livro com este ISBN: “${d.titulo}”.` : '';
+  };
+  isbnEl.addEventListener('input', avisoIsbn);
+  avisoIsbn();
   catSel.addEventListener('change', ()=> preencheSubs(Number(catSel.value)||undefined));
   ['lv-descricao','lv-comentarios'].forEach(t=>{ const el=$(t); autoGrow(el); el.addEventListener('input', ()=>autoGrow(el)); });
   $('lv-capa-file').addEventListener('change', async e=>{
@@ -1212,6 +1399,27 @@ function abrirFormLivro(id, situacaoInicial){
   $('lv-save').addEventListener('click', async ()=>{
     const titulo = $('lv-titulo').value.trim();
     if(!titulo){ camadaMain.salvando = false; avisar('Informe o título do livro.'); return; }
+    const pendente = limpaNome(buscaEl.value);
+    if(pendente){
+      camadaMain.salvando = false;
+      avisar(`O nome “${pendente}” no campo Autores ainda não foi adicionado.\n\nToque nele na lista de sugestões (ou em “+ Criar autor”), ou apague o texto.`);
+      return;
+    }
+    /* só pergunta quando o ISBN é novo ou mudou: quem já decidiu salvar "outro exemplar" não é interrompido a cada edição */
+    const isbnMudou = !l || isbnChave(l.isbn) !== isbnChave($('lv-isbn').value);
+    const repetido = isbnMudou ? livroComIsbn($('lv-isbn').value, l ? l.id : undefined) : null;
+    if(repetido){
+      const esc = await escolherNoPicker(`<h3>ISBN já cadastrado</h3>
+        <p class="hint" style="margin-top:0">“${escapeHtml(repetido.titulo)}” (${repetido.situacao==='desejo' ? 'Lista de desejos' : 'Biblioteca'}) já tem este ISBN.</p>
+        <div class="escolha-lista">
+          <button class="btn btn-accent btn-block" type="button" data-v="abrir">Abrir o livro existente</button>
+          <button class="btn btn-outline btn-block" type="button" data-v="salvar">Salvar mesmo assim (outro exemplar)</button>
+          <button class="btn btn-outline btn-block" type="button" data-v="voltar" style="text-align:center">Voltar ao formulário</button>
+        </div>
+        <p class="hint">“Abrir o livro existente” descarta o que você preencheu aqui.</p>`);
+      if(esc==='abrir'){ abrirLivro(repetido.id); return; }
+      if(esc!=='salvar'){ camadaMain.salvando = false; return; }
+    }
     const sit = sitSel.value;
     const reg = {
       ...(l||{}),
@@ -1226,7 +1434,7 @@ function abrirFormLivro(id, situacaoInicial){
       capa,
       descricao: $('lv-descricao').value.trim(),
       comentarios: $('lv-comentarios').value.trim(),
-      autorIds: (l && l.autorIds) || []
+      autorIds
     };
     const novoId = await putRecord('livros', reg);
     await reloadAll(); renderCurrent();
@@ -1324,6 +1532,63 @@ document.getElementById('cats-lista').addEventListener('click', async e=>{
     for(const l of afetados) await putRecord('livros', cat ? {...l, categoriaId:null, subcategoriaId:null} : {...l, subcategoriaId:null});
     for(const sid of subIds) await deleteRecord('subcategorias', sid);
     await deleteRecord(cat ? 'categorias' : 'subcategorias', id);
+    await reloadAll(); renderCurrent();
+  }
+});
+
+/* ============================================================
+   AUTORES (v1_03): tela Mais → Autores (lista, livros do autor, renomear, excluir, novo)
+   Cadastro só com nome. Nunca une autores sozinho; nomes parecidos só geram alerta.
+   ============================================================ */
+function livrosDoAutor(id){ return LIVROS.filter(l=> (l.autorIds||[]).includes(id)); }
+function renderAutores(){
+  const el = document.getElementById('autores-lista');
+  if(!AUTORES.length){ el.innerHTML = '<div class="vazio" style="margin-bottom:12px">Nenhum autor ainda.</div>'; return; }
+  const ord = [...AUTORES].sort((a,b)=> a.nome.localeCompare(b.nome, 'pt-BR'));
+  el.innerHTML = ord.map(a=>`<div class="cat-bloco"><div class="cat-linha">
+      <span class="nome clicavel" data-act="ver" data-id="${a.id}">${escapeHtml(a.nome)} <small>(${livrosDoAutor(a.id).length})</small></span>
+      <button class="btn btn-outline btn-xs" data-act="ren" data-id="${a.id}" type="button">Renomear</button>
+      <button class="btn btn-danger btn-xs" data-act="del" data-id="${a.id}" type="button">Excluir</button></div></div>`).join('');
+}
+function abrirAutor(id){
+  const a = AUTORES.find(x=>x.id===id);
+  if(!a){ closeSheet(); return; }
+  const lista = livrosDoAutor(id).sort((x,y)=> x.titulo.localeCompare(y.titulo, 'pt-BR'));
+  openSheet(`<h3>${escapeHtml(a.nome)}</h3>`
+    + (lista.length ? `<div class="livros-lista">${lista.map(livroItemHTML).join('')}</div>` : '<div class="vazio">Nenhum livro deste autor.</div>')
+    + `<div class="sheet-actions"><button class="btn btn-outline" id="au-close" type="button" style="flex:1">Fechar</button></div>`);
+  document.getElementById('au-close').addEventListener('click', ()=> closeSheet());
+  sheet.querySelectorAll('.livro-item').forEach(it=> it.addEventListener('click', ()=> abrirLivro(Number(it.dataset.id))));
+}
+document.getElementById('btnNovoAutor').addEventListener('click', async ()=>{
+  const r = await perguntar('Nome do novo autor:', '');
+  if(r===null) return;
+  await criarAutorComChecagem(r);
+});
+document.getElementById('autores-lista').addEventListener('click', async e=>{
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const id = Number(b.dataset.id), act = b.dataset.act;
+  const a = AUTORES.find(x=>x.id===id); if(!a) return;
+  if(act==='ver'){ abrirAutor(id); return; }
+  if(act==='ren'){
+    const r = await perguntar('Novo nome:', a.nome);
+    if(r===null) return;
+    const nome = limpaNome(r);
+    if(!nome || nome===a.nome) return;
+    const {exatos, parecidos} = autoresParecidos(nome, id);
+    const sim = exatos.concat(parecidos);
+    if(sim.length && !await confirmar(`“${nome}” é ${exatos.length ? 'igual' : 'parecido'} a: ${sim.slice(0,6).map(x=>x.nome).join(', ')}.\n\nRenomear mesmo assim? Autores nunca são unidos automaticamente.`)) return;
+    await putRecord('autores', {...a, nome});
+    await reloadAll(); renderCurrent(); return;
+  }
+  if(act==='del'){
+    const afetados = livrosDoAutor(id);
+    let msg = `Excluir o autor “${a.nome}”?`;
+    if(afetados.length) msg += `\n\n${afetados.length} ${afetados.length===1?'livro ficará':'livros ficarão'} sem este autor (os livros não são excluídos).`;
+    msg += '\n\nNão há como desfazer.';
+    if(!await confirmar(msg)) return;
+    for(const l of afetados) await putRecord('livros', {...l, autorIds: (l.autorIds||[]).filter(x=>x!==id)});
+    await deleteRecord('autores', id);
     await reloadAll(); renderCurrent();
   }
 });
@@ -1429,7 +1694,7 @@ document.getElementById('btnImportJson').addEventListener('click', async ()=>{
    ============================================================ */
 fillConfiguracoesForm();
 /* ---- PWA: versão, armazenamento persistente e service worker ---- */
-const APP_VERSION = 'v1_02';
+const APP_VERSION = 'v1_03';
 document.getElementById('appVersaoTxt').textContent = APP_VERSION;
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persist().then(ok=>{

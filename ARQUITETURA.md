@@ -59,7 +59,7 @@ Todos os stores: `{keyPath:'id', autoIncrement:true}`. Acesso: `getAll`, `putRec
 | Store | Variável | Uso previsto |
 |---|---|---|
 | `livros` | `LIVROS` | título (obrigatório), subtítulo, isbn, `autorIds[]`, `capa` (data URL), páginas, descrição, comentários, `categoriaId`/`subcategoriaId`, `situacao` (`desejo`\|`proprio`\|`emprestado`), `emprestadoDe` |
-| `autores` | `AUTORES` | só `nome` |
+| `autores` | `AUTORES` | só `nome` (v1_03). Excluir um autor tira o id de `autorIds` dos livros; os livros ficam |
 | `categorias`, `subcategorias` | `CATS`, `SUBCATS` | classificação de livros (subcategoria tem `categoriaId`) |
 | `leituras` | `LEITURAS` | `livroId`, início, fim, `status` (`andamento`\|`finalizada`) |
 | `progressos` | `PROGRESSOS` | `leituraId`, página, data/hora (preserva histórico, aceita regressão) |
@@ -78,7 +78,7 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 ## 7. Navegação e camadas de UI (herdado do Preços)
 
 - **Pilha única `navStack`** (telas + modais). O botão voltar do celular desempilha; sem nada empilhado, pergunta se quer sair do app.
-- Camadas de sheet (`criarCamada`): principal (`openSheet`), sub (`openSubSheet`), sub2 (`openSub2Sheet`); têm `dirty`/`salvando`/`confirmarDescarte` (sair de edição com alterações pede confirmação). Seletor sobreposto `pickerOverlay` (z-index 65) reservado para seletores (autores, categorias).
+- Camadas de sheet (`criarCamada`): principal (`openSheet`), sub (`openSubSheet`), sub2 (`openSub2Sheet`); têm `dirty`/`salvando`/`confirmarDescarte` (sair de edição com alterações pede confirmação). Seletor sobreposto `pickerOverlay` (z-index 65): `escolherNoPicker(html)` mostra botões com `data-v="valor"` e devolve o valor tocado, ou `null` se o usuário voltar/tocar fora (entra na `navStack` como modal; o voltar do celular fecha só ele). Usado nas escolhas de autor parecido e de ISBN repetido.
 - **Só empilha** por atalhos dentro das telas. Barra inferior e itens do Mais são **raiz** e zeram a pilha: `switchView(name, {raiz:true})`.
 - Barra inferior: Biblioteca, Desejos, Leituras, Pesquisa, Mais. Em Mais: Tela de atalhos, Categorias de livros, Backup e restauração, Configurações. O botão flutuante `+` (`fabAdd`) aparece só em Biblioteca e Desejos. `VIEWS_DO_MAIS` lista as telas que acendem a aba Mais.
 - Página inicial configurável: Leituras (`view-leituras`) ou Atalhos (`view-inicio`).
@@ -93,6 +93,14 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 - `autorIds` é gravado como `[]` (autores na v1_03); duplicidade de ISBN também na v1_03.
 - Exclusão `excluirLivro`: apaga em cascata leituras, progressos, anotações, personagens e preços do livro, avisando as quantidades.
 - Categorias: tela Mais → Categorias (`renderCategorias`); `criarCategoria`/`criarSubcategoria` também são usadas pelo botão `+` do formulário. Nome repetido (ignorando acento/caixa) é recusado. Excluir categoria apaga suas subcategorias e deixa os livros sem categoria.
+
+## 7b. Autores e ISBN (v1_03)
+
+- **Formulário do livro:** autores escolhidos viram chips; o campo de busca sugere existentes (sem diferenciar acento/caixa) e sempre oferece "+ Criar autor". Texto digitado e não adicionado bloqueia o salvar com aviso. Estado local `autorIds`, gravado em `livro.autorIds`.
+- **Criar autor:** `criarAutorComChecagem(nome)` compara com `normalizeNome` + `nomesSemelhantes` (mesmas letras sem espaços/pontuação, ordem trocada, erro de digitação por `levenshtein`, nome contido em nome mais completo). Se houver igual/parecido, o seletor oferece "Usar existente" / "Criar como outro autor" / "Cancelar". **Nunca une autores sozinho.** Renomear na tela Autores usa `confirmar` quando o novo nome é parecido.
+- **Tela Mais → Autores** (`view-autores`, `renderAutores`): lista com contagem de livros; tocar no nome abre os livros do autor (`abrirAutor`); renomear; excluir (avisa quantos livros perdem o autor).
+- **ISBN repetido:** `isbnChave` limpa hífens/espaços e converte ISBN-10 válido em ISBN-13 (mesma chave = mesmo livro); `livroComIsbn(isbn, ignorarId)`. O formulário mostra aviso na hora; ao salvar, **só se o ISBN é novo ou mudou**, o seletor oferece "Abrir o livro existente" (descarta o formulário) / "Salvar mesmo assim (outro exemplar)" / "Voltar". Sem ISBN, nenhuma regra por título.
+- Sem mudança de esquema: store `autores` já existia (`DB_VERSION` segue 1) e o backup é genérico.
 
 ## 8. Backup (reaproveitado do Preços, adaptado)
 
