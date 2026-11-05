@@ -13,7 +13,7 @@ Uma fase = uma versão = uma sessão (cabe no limite do plano gratuito). A ordem
 | v1_07 | Histórico de progresso: gráfico (com regressões) e lista com editar/excluir discreto; **inclui reabrir leitura finalizada** (pedido do usuário) | publicada |
 | v1_08 | Personagens e anotações (abas da leitura, todas / por personagem, página, data editável) | publicada |
 | v1_09 | `@menções` em anotações (autocompletar, confirmar criação, vínculos reais, exclusão com aviso) | publicada |
-| v1_10 | Preços dos livros (adaptado do Preços: preço, data, local, pago × observado, histórico, gráfico); inclui Mais → Locais | feita na branch v1_10 (aguarda validação e "pode publicar") |
+| v1_10 | Preços dos livros (adaptado do Preços: preço, data, local, pago × observado, histórico, gráfico); inclui Mais → Locais | publicada |
 | v1_11 | Pesquisa geral, filtros e visões salvas (um único mecanismo; pode precisar de 2 sessões) | |
 | v1_12 | Acabamento: identidade visual, ícones, limpeza de CSS herdado, revisão contra a especificação | |
 
