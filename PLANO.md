@@ -10,7 +10,7 @@ Uma fase = uma versão = uma sessão (cabe no limite do plano gratuito). A ordem
 | v1_04 | ISBN digitado + busca online (Google Books / Open Library), tela de revisão, capa | publicada |
 | v1_05 | Scanner de código de barras (câmera) | publicada |
 | v1_06 | Leituras: iniciar, registrar página (aviso de página menor), finalizar, várias leituras, aba Leituras, % nas listagens (inclui excluir leitura) | pronta (aguarda validação e "pode publicar") |
-| v1_07 | Histórico de progresso: gráfico (com regressões) e lista com editar/excluir discreto | |
+| v1_07 | Histórico de progresso: gráfico (com regressões) e lista com editar/excluir discreto; **inclui reabrir leitura finalizada** (ver itens pedidos) | |
 | v1_08 | Personagens e anotações (abas da leitura, todas / por personagem, página, data editável) | |
 | v1_09 | `@menções` em anotações (autocompletar, confirmar criação, vínculos reais, exclusão com aviso) | |
 | v1_10 | Preços dos livros (adaptado do Preços: preço, data, local, pago × observado, histórico, gráfico) | |
@@ -21,3 +21,7 @@ Uma fase = uma versão = uma sessão (cabe no limite do plano gratuito). A ordem
 
 - v1_04: as APIs de ISBN respondem ao navegador (CORS) e a capa pode ser baixada; senão, capa por foto/galeria. **Não foi possível testar contra as APIs reais na sandbox (rede bloqueada)**: a v1_04 foi testada com respostas simuladas; conferir no celular com um ISBN real (ex.: 9788535914849) se aparece a tela de revisão e se a capa vem.
 - v1_05: `BarcodeDetector` funciona no Chrome dele (a sandbox testou com leitor e câmera simulados, não com câmera real); senão, decidir fallback. Conferir também: permissão da câmera, a leitura de um código de verdade e a Luz.
+
+## Itens pedidos para versões futuras
+
+- **Reabrir leitura finalizada** (pedido do usuário em 2026-11-04; não está na especificação): na tela de uma leitura finalizada, botão para voltar o status a "em andamento", limpando a data de fim e liberando de novo o registro de páginas. Se o livro já tiver outra leitura em andamento, avisar antes (mesma regra de iniciar leitura). Sugerido para a v1_07, junto do histórico de progresso. Ao implementar, atualizar `ARQUITETURA.md` (seção 7e diz que finalizar não tem "reabrir") e a confirmação de "Finalizar leitura", que hoje cita a falta desse recurso.
