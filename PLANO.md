@@ -19,7 +19,7 @@ Uma fase = uma versão = uma sessão (cabe no limite do plano gratuito). A ordem
 
 ## Pontos a validar no aparelho do usuário
 
-- v1_04: as APIs de ISBN respondem ao navegador (CORS) e a capa pode ser baixada; senão, capa por foto/galeria. **Não foi possível testar contra as APIs reais na sandbox (rede bloqueada)**: a v1_04 foi testada com respostas simuladas; conferir no celular com um ISBN real (ex.: 9788535914849) se aparece a tela de revisão e se a capa vem.
+- v1_04: **validado no celular pelo usuário em 2026-11-04** (busca online por ISBN real funcionou: APIs respondem ao navegador).
 - v1_05: `BarcodeDetector` funciona no Chrome dele (a sandbox testou com leitor e câmera simulados, não com câmera real); senão, decidir fallback. Conferir também: permissão da câmera, a leitura de um código de verdade e a Luz.
 
 ## Itens pedidos para versões futuras
