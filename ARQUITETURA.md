@@ -1,6 +1,6 @@
 # ARQUITETURA.md — App "Livros"
 
-Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_07 em 2026-11-04; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
+Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_08 em 2026-11-05; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
 
 O escopo funcional está em `ESPECIFICACAO.md`; a ordem de entrega e o andamento estão em `PLANO.md`.
 
@@ -63,8 +63,8 @@ Todos os stores: `{keyPath:'id', autoIncrement:true}`. Acesso: `getAll`, `putRec
 | `categorias`, `subcategorias` | `CATS`, `SUBCATS` | classificação de livros (subcategoria tem `categoriaId`) |
 | `leituras` | `LEITURAS` | `livroId`, `inicio` e `fim` (ISO/UTC; `fim` null em andamento), `status` (`andamento`\|`finalizada`). A página atual **não** é gravada aqui (ver 7e) |
 | `progressos` | `PROGRESSOS` | `leituraId`, `pagina`, `dataHora` (ISO/UTC; preserva histórico, aceita regressão) |
-| `anotacoes` | `ANOTACOES` | `leituraId`, texto, data/hora, página, referências a personagens |
-| `personagens` | `PERSONAGENS` | `livroId`, `nome`, comentário (compartilhadas entre leituras do livro) |
+| `anotacoes` | `ANOTACOES` | `leituraId`, `texto`, `dataHora` (ISO/UTC, editável), `pagina` (número ou `null`), `personagemIds[]` (vínculos reais; v1_08) |
+| `personagens` | `PERSONAGENS` | `livroId`, `nome`, `comentario` (compartilhadas entre as leituras do livro; v1_08) |
 | `precos` | `PRECOS` | `livroId`, preço, data, `localId`, `comprou` (pago × observado) |
 | `locais` | `LOCAIS` | lojas/livrarias |
 | `visoes` | `VISOES` | visões e combinações de filtros salvas (um único mecanismo), com `ordem` |
@@ -126,7 +126,7 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 - **Dados:** `leitura = {livroId, inicio, fim, status}` e `progresso = {leituraId, pagina, dataHora}`; datas em `new Date().toISOString()` (UTC), exibidas no horário local por `fmtDataHora`/`fmtDataCurta`. **A página atual é derivada**: página do último progresso (ordenado por `dataHora`, depois `id`), ou 0 se não há registro (`paginaAtualLeitura`). Assim editar/excluir registros (v1_07) nunca deixa a leitura inconsistente. Sem mudança de esquema (`DB_VERSION` segue 1); o backup genérico já leva os dois stores (testado ida e volta).
 - **Helpers:** `leiturasDoLivro`, `leiturasAndamento` (mais recente primeiro; normalmente 0 ou 1), `progressosDaLeitura`, `ultimoProgresso`, `percentualLeitura(lt, livro)` (arredonda **para baixo**: 349 de 350 = 99%; `null` sem total de páginas; teto 100) e `percentualLivro(livroId)` (só leitura em andamento; usado nas listagens).
 - **Detalhe do livro:** seção "Minhas leituras" (`minhasLeiturasHTML`): em andamento em destaque, finalizadas em lista (mais nova primeiro, "Leitura N" pela ordem de início) e botão "Iniciar leitura" (vira "Iniciar nova leitura", em contorno se já há uma em andamento). Vale para qualquer situação do livro (inclusive desejo). `iniciarLeitura`: se já há uma em andamento, `confirmar` antes; ao iniciar abre a tela da leitura.
-- **Tela da leitura** `abrirLeitura(id, origem)` (sheet **principal**, substitui o conteúdo como o formulário do livro; origem `'livro'` volta ao detalhe, `'lista'` fecha; o voltar do celular fecha a sheet): título, status, datas, página atual grande, % e barra, último registro, campo "Página atual" + "Registrar página" (Enter também), "Finalizar leitura" e "Excluir leitura". Seção **Histórico** (v1_07, ver 7f). Ainda **sem abas** (Anotações/Personagens na v1_08).
+- **Tela da leitura** `abrirLeitura(id, origem)` (sheet **principal**, substitui o conteúdo como o formulário do livro; origem `'livro'` volta ao detalhe, `'lista'` fecha; o voltar do celular fecha a sheet): título, status, datas, página atual grande, % e barra, último registro, campo "Página atual" + "Registrar página" (Enter também), "Finalizar leitura" e "Excluir leitura". Três **abas** (v1_08, ver 7g): Progresso (progresso, histórico da 7f, finalizar/reabrir, excluir), Anotações e Personagens.
 - **Registrar:** inteiro ≥ 0; acima do total de páginas (se houver) é impedido; menor que a última página registrada pede `confirmar` citando a anterior (cancelar não grava); igual ou maior grava direto. Data/hora automáticas.
 - **Finalizar** (`finalizarLeitura`): com total de páginas e progresso < 100% abre o seletor (`escolherNoPicker`): manter página atual / alterar para 100% (grava também um progresso com a última página) / voltar; nos demais casos só `confirmar` (que lembra que dá para reabrir; ver 7f). Grava `fim` e `status:'finalizada'`; leitura finalizada não aceita novos registros.
 - **Excluir leitura** (`excluirLeitura`, não está na especificação; necessária para desfazer início ou finalização por engano): `confirmar` com contagem; apaga a leitura, seus progressos e suas anotações (`leituraId`); o livro e as outras leituras ficam.
@@ -142,6 +142,15 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 - **Excluir registro** (`excluirProgresso`): `confirmar` citando página e data; a página atual passa a ser a do registro anterior (é derivada, ver 7e).
 - **Reabrir leitura finalizada** (`reabrirLeitura`, botão "↺ Reabrir leitura" só em leitura finalizada; **não está na especificação**, pedido do usuário): volta `status` a `andamento` e `fim` a `null`; histórico e anotações ficam. Se o livro já tem **outra** leitura em andamento, avisa antes (mesma regra de iniciar); senão pede confirmação simples citando o fim que será apagado.
 - Sem mudança de esquema (`DB_VERSION` segue 1); o backup genérico já leva tudo (testado ida e volta com registro editado).
+
+## 7g. Anotações e personagens (v1_08)
+
+- **Abas da tela da leitura** (`#lt-abas`; painéis `#lt-pane-progresso|anotacoes|personagens`): `mostrarAbaLeitura`, `iniciarAbasLeitura`, `atualizarAbasLeitura(id, origem)` (redesenha só Anotações/Personagens e as contagens, sem reabrir a tela). Estado do módulo: `_ltAba` e `_anotFiltro`, reiniciados (Progresso, sem filtro) ao abrir outra leitura. Tudo que já existia (progresso, histórico, finalizar/reabrir, excluir leitura) ficou dentro da aba Progresso.
+- **Personagens** (`desenharPersonagens`, `abrirFormPersonagem`): são **do livro** (`livroId`), compartilhadas entre as leituras dele. Lista com comentário resumido e nº de anotações citando; form em sub-sheet (ids `pn-*`): nome obrigatório, comentário, "Ver anotações desta leitura sobre X" (aplica o filtro e vai à aba Anotações), excluir. **Nome igual** (sem acento/caixa) no mesmo livro é recusado; **parecido** (`personagensParecidas`, mesmo `nomesSemelhantes` dos autores) pede confirmação. **Excluir personagem citada**: `confirmar` com a quantidade de anotações; as anotações ficam e só perdem o vínculo (`personagemIds` é regravado sem ela): nunca sobra referência quebrada.
+- **Anotações** (`desenharAnotacoes`, `abrirFormAnotacao`): pertencem à **leitura** (também as finalizadas). Lista da mais recente à mais antiga (`dataHora`, depois id), cartão com texto (preserva quebras de linha), data/hora, página (se houver) e etiquetas das personagens; tocar abre a edição. Filtro "Mostrar": Todas ou "Sobre <personagem>" (só personagens do livro; some se a personagem for excluída). Form em sub-sheet (ids `an-*`, `an-save` ativa o aviso de descarte): texto obrigatório, página opcional (inteiro ≥ 0, não acima do total do livro), personagens por chips + botão "+ Personagem", data e hora **automáticas mas editáveis** (não pode ser futura; se o usuário não mexe, a anotação nova guarda a hora exata do salvamento e a editada mantém a original), excluir com `confirmar`.
+- **Personagem dentro da anotação** (`escolherPersonagemParaAnotacao`): o seletor lista as personagens do livro ainda não escolhidas e "+ Nova personagem" (pergunta o nome; `criarPersonagemComChecagem`: nome igual/parecido oferece usar a existente, criar outra ou cancelar). A personagem nova **já é gravada** ao criar (como autor no formulário do livro), mesmo que a anotação não seja salva depois.
+- **Fora desta versão:** `@menções` no texto (autocompletar ao digitar `@`, confirmar criação) ficam para a v1_09; por ora o vínculo é só pelos botões. Excluir leitura e excluir livro já apagavam anotações (e personagens, no caso do livro) desde a v1_06.
+- Sem mudança de esquema (`DB_VERSION` segue 1); os stores `anotacoes` e `personagens` já existiam e o backup genérico os leva (testado ida e volta).
 
 ## 8. Backup (reaproveitado do Preços, adaptado)
 
@@ -169,4 +178,6 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 - Mesmo domínio que o Preços: nunca ler/gravar chaves fora de `livros_*`.
 - Chrome instalado como PWA: após publicar, o service worker só atualiza se `CACHE` mudou.
 - Hook de "unpushed" pode reclamar: `git fetch origin <branch>:refs/remotes/origin/<branch>`.
+- **Modais em sequência:** quando um seletor/diálogo fecha e outro abre logo em seguida (ex.: seletor → `perguntar` → seletor), o `history.back()` do primeiro ainda está em andamento e o histórico do navegador se corrompe (a página chegou a ir para `about:blank`). Entre os dois, usar `await historicoAssentar()` (espera os `history.back()` pendentes, via `executarAposHistorico`).
+- No Playwright, `page.evaluate` de função que abre diálogo e espera a resposta trava o teste: chamar sem aguardar (`excluirLivro(id); return 1`) e clicar no diálogo depois.
 - No Playwright, handlers `async` (backup, restauração) exigem espera antes de verificar o resultado.

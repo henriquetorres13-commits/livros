@@ -432,6 +432,16 @@ header .sub{color:#E6D2D6;}
 .hist-reg .menor{font-size:11px;font-weight:700;color:var(--danger);margin-left:6px;}
 .hist-acoes{display:none;gap:8px;margin-top:8px;}
 .hist-reg.sel .hist-acoes{display:flex;}
+/* Abas da leitura, anotações e personagens (v1_08) */
+.lt-abas{display:flex;margin-top:14px;border-bottom:1px solid var(--line);}
+.lt-abas button{flex:1;padding:9px 4px;font-size:13px;font-weight:700;background:none;color:var(--ink-soft);border-bottom:3px solid transparent;margin-bottom:-1px;cursor:pointer;}
+.lt-abas button.active{color:var(--accent);border-bottom-color:var(--accent);}
+.an-card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:9px 12px;margin-bottom:8px;cursor:pointer;}
+.an-card:active{opacity:.7;}
+.an-card .an-txt{font-size:14px;white-space:pre-wrap;overflow-wrap:anywhere;}
+.an-card .meta{font-size:12px;color:var(--ink-soft);margin-top:3px;}
+.an-pers{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
+.an-p{background:var(--accent-soft);color:var(--accent);font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px;}
 </style>
 </head>
 <body>
@@ -1873,6 +1883,12 @@ function abrirLeitura(id, origem){
       <h3 class="det-tit">${escapeHtml(l.titulo)}</h3>
       <div style="margin-top:8px"><span class="badge ${and ? 'badge-bad' : 'badge-good'}">${and ? 'Em andamento' : 'Finalizada'}</span><span class="hint">Leitura ${num}</span></div>
       <div class="hint" style="margin-top:6px">Iniciada em ${fmtDataHora(lt.inicio)}${and ? '' : `<br>Finalizada em ${fmtDataHora(lt.fim)}`}</div>
+      <div class="lt-abas" id="lt-abas">
+        <button type="button" data-a="progresso">Progresso</button>
+        <button type="button" data-a="anotacoes">Anotações<span id="lt-n-an"></span></button>
+        <button type="button" data-a="personagens">Personagens<span id="lt-n-pe"></span></button>
+      </div>
+      <div id="lt-pane-progresso">
       <div class="det-sec" style="margin-top:14px">
         <div class="det-sec-t">Progresso</div>
         <div class="lt-pag-grande">${pag} <small>${l.paginas ? `de ${l.paginas} páginas · ${pct}%` : 'página atual'}</small></div>
@@ -1884,14 +1900,18 @@ function abrirLeitura(id, origem){
         <div class="det-sec-t">Histórico</div>
         <div id="lt-hist"></div>
       </div>
-    </div>
-    ${and ? '<button class="btn btn-outline btn-block" id="lt-finalizar" type="button" style="margin-top:16px">✓ Finalizar leitura</button>' : '<button class="btn btn-outline btn-block" id="lt-reabrir" type="button" style="margin-top:16px">↺ Reabrir leitura</button>'}
-    <button class="btn btn-danger btn-block" id="lt-del" type="button" style="margin-top:10px">Excluir leitura</button>`);
+      ${and ? '<button class="btn btn-outline btn-block" id="lt-finalizar" type="button" style="margin-top:16px">✓ Finalizar leitura</button>' : '<button class="btn btn-outline btn-block" id="lt-reabrir" type="button" style="margin-top:16px">↺ Reabrir leitura</button>'}
+      <button class="btn btn-danger btn-block" id="lt-del" type="button" style="margin-top:10px">Excluir leitura</button>
+      </div>
+      <div id="lt-pane-anotacoes" style="display:none"></div>
+      <div id="lt-pane-personagens" style="display:none"></div>
+    </div>`);
   const $ = x=> document.getElementById(x);
   $('lt-close').addEventListener('click', ()=>{ if(origem==='livro') abrirLivro(l.id); else closeSheet(); });
   $('lt-del').addEventListener('click', ()=> excluirLeitura(id, origem));
-  if(_histLeitura !== id){ _histLeitura = id; _histModo = 'grafico'; }   // cada leitura abre no gráfico
+  if(_histLeitura !== id){ _histLeitura = id; _histModo = 'grafico'; _ltAba = 'progresso'; _anotFiltro = null; }   // cada leitura abre no gráfico, na aba Progresso
   desenharHistorico(id, origem);
+  iniciarAbasLeitura(id, origem);
   if(!and){ $('lt-reabrir').addEventListener('click', ()=> reabrirLeitura(id, origem)); return; }
   const reg = $('lt-registrar'), campo = $('lt-pagina');
   const registrar = async ()=>{
@@ -1948,6 +1968,239 @@ async function excluirLeitura(id, origem){
   await deleteRecord('leituras', id);
   await reloadAll(); renderCurrent();
   if(origem==='livro') abrirLivro(l.id); else closeSheet();
+}
+
+/* ============================================================
+   ANOTAÇÕES E PERSONAGENS (v1_08): abas da tela da leitura
+   personagem = {livroId, nome, comentario}  (do livro: compartilhada entre as leituras)
+   anotacao   = {leituraId, texto, dataHora (ISO/UTC), pagina (número|null), personagemIds[]}
+   @menções no texto ficam para a v1_09; aqui as personagens são escolhidas por botão.
+   ============================================================ */
+let _ltAba = 'progresso', _anotFiltro = null;
+function personagensDoLivro(livroId){ return PERSONAGENS.filter(p=>p.livroId===livroId); }   // PERSONAGENS já vem em ordem de nome
+function anotacoesDaLeitura(leituraId){
+  return ANOTACOES.filter(a=>a.leituraId===leituraId).sort((a,b)=> (b.dataHora||'').localeCompare(a.dataHora||'') || b.id-a.id);
+}
+function anotacoesDaPersonagem(pid){ return ANOTACOES.filter(a=>(a.personagemIds||[]).includes(pid)); }
+function nomePersonagem(pid){ const p = PERSONAGENS.find(x=>x.id===pid); return p ? p.nome : '(personagem excluída)'; }
+function historicoAssentar(){ return new Promise(r=> executarAposHistorico(r)); }
+function plural(n, um, varios){ return `${n} ${n===1 ? um : varios}`; }
+
+function mostrarAbaLeitura(aba){
+  _ltAba = aba;
+  document.querySelectorAll('#lt-abas button').forEach(b=> b.classList.toggle('active', b.dataset.a===aba));
+  ['progresso','anotacoes','personagens'].forEach(a=>{ const el = document.getElementById('lt-pane-'+a); if(el) el.style.display = a===aba ? '' : 'none'; });
+}
+function iniciarAbasLeitura(id, origem){
+  document.querySelectorAll('#lt-abas button').forEach(b=> b.addEventListener('click', ()=> mostrarAbaLeitura(b.dataset.a)));
+  atualizarAbasLeitura(id, origem);
+  mostrarAbaLeitura(_ltAba);
+}
+/* Redesenha só as abas Anotações/Personagens (sem reabrir a tela inteira) */
+function atualizarAbasLeitura(id, origem){
+  const lt = LEITURAS.find(x=>x.id===id), l = lt && LIVROS.find(x=>x.id===lt.livroId);
+  if(!l || !document.getElementById('lt-pane-anotacoes')) return;
+  const na = anotacoesDaLeitura(id).length, np = personagensDoLivro(l.id).length;
+  document.getElementById('lt-n-an').textContent = na ? ` (${na})` : '';
+  document.getElementById('lt-n-pe').textContent = np ? ` (${np})` : '';
+  desenharAnotacoes(id, origem);
+  desenharPersonagens(id, origem);
+}
+
+function desenharAnotacoes(id, origem){
+  const lt = LEITURAS.find(x=>x.id===id), l = lt && LIVROS.find(x=>x.id===lt.livroId);
+  const el = document.getElementById('lt-pane-anotacoes'); if(!l || !el) return;
+  const pers = personagensDoLivro(l.id);
+  if(_anotFiltro && !pers.some(p=>p.id===_anotFiltro)) _anotFiltro = null;
+  let lista = anotacoesDaLeitura(id);
+  if(_anotFiltro) lista = lista.filter(a=>(a.personagemIds||[]).includes(_anotFiltro));
+  const vazio = _anotFiltro ? `Nenhuma anotação desta leitura cita ${escapeHtml(nomePersonagem(_anotFiltro))}.`
+                            : 'Nenhuma anotação nesta leitura ainda.';
+  el.innerHTML = `<button class="btn btn-accent btn-block" id="an-nova" type="button" style="margin-top:14px">+ Nova anotação</button>`
+    + (pers.length ? `<label>Mostrar</label><select id="an-filtro"><option value="">Todas as anotações</option>${pers.map(p=>`<option value="${p.id}" ${p.id===_anotFiltro?'selected':''}>Sobre ${escapeHtml(p.nome)}</option>`).join('')}</select>` : '')
+    + `<div style="margin-top:12px">` + (lista.length ? lista.map(a=>{
+        const ids = a.personagemIds||[];
+        return `<div class="an-card" data-an="${a.id}"><div class="an-txt">${escapeHtml(a.texto)}</div>`
+          + `<div class="meta">${fmtDataHora(a.dataHora)}${a.pagina!=null ? ` · Página ${a.pagina}` : ''}</div>`
+          + (ids.length ? `<div class="an-pers">${ids.map(pid=>`<span class="an-p">${escapeHtml(nomePersonagem(pid))}</span>`).join('')}</div>` : '')
+          + `</div>`;
+      }).join('') : `<p class="hint" style="margin-top:0">${vazio}</p>`) + `</div>`;
+  document.getElementById('an-nova').addEventListener('click', ()=> abrirFormAnotacao(id, null, origem));
+  const f = document.getElementById('an-filtro');
+  if(f) f.addEventListener('change', ()=>{ _anotFiltro = f.value ? Number(f.value) : null; desenharAnotacoes(id, origem); });
+  el.querySelectorAll('.an-card').forEach(c=> c.addEventListener('click', ()=> abrirFormAnotacao(id, Number(c.dataset.an), origem)));
+}
+
+function desenharPersonagens(id, origem){
+  const lt = LEITURAS.find(x=>x.id===id), l = lt && LIVROS.find(x=>x.id===lt.livroId);
+  const el = document.getElementById('lt-pane-personagens'); if(!l || !el) return;
+  const pers = personagensDoLivro(l.id);
+  el.innerHTML = `<button class="btn btn-accent btn-block" id="pe-nova" type="button" style="margin-top:14px">+ Nova personagem</button>`
+    + `<p class="hint">As personagens são do livro e valem para todas as leituras dele.</p>`
+    + (pers.length ? pers.map(p=>{
+        const n = anotacoesDaPersonagem(p.id).length;
+        return `<div class="an-card" data-pe="${p.id}"><div class="an-txt"><b>${escapeHtml(p.nome)}</b></div>`
+          + (p.comentario ? `<div class="meta" style="white-space:pre-wrap">${escapeHtml(p.comentario.length>140 ? p.comentario.slice(0,140)+'…' : p.comentario)}</div>` : '')
+          + `<div class="meta">${n ? plural(n,'anotação','anotações') : 'Sem anotações'}</div></div>`;
+      }).join('') : '<p class="hint" style="margin-top:0">Nenhuma personagem cadastrada neste livro.</p>');
+  document.getElementById('pe-nova').addEventListener('click', ()=> abrirFormPersonagem(l.id, null, id, origem));
+  el.querySelectorAll('[data-pe]').forEach(c=> c.addEventListener('click', ()=> abrirFormPersonagem(l.id, Number(c.dataset.pe), id, origem)));
+}
+
+/* Nome de personagem repetido (igual/parecido) no mesmo livro */
+function personagensParecidas(livroId, nome, ignorarId){
+  const n = normalizeNome(nome), exatos = [], parecidos = [];
+  personagensDoLivro(livroId).forEach(p=>{
+    if(p.id===ignorarId) return;
+    const m = normalizeNome(p.nome);
+    if(m===n) exatos.push(p); else if(nomesSemelhantes(n, m)) parecidos.push(p);
+  });
+  return {exatos, parecidos};
+}
+/* Cria personagem direto da anotação. Igual/parecida: oferece usar a existente. Devolve o id ou null. */
+async function criarPersonagemComChecagem(livroId, nomeBruto){
+  const nome = limpaNome(nomeBruto);
+  if(!nome) return null;
+  const {exatos, parecidos} = personagensParecidas(livroId, nome);
+  const similares = exatos.concat(parecidos).slice(0, 6);
+  if(similares.length){
+    const esc = await escolherNoPicker(`<h3>${exatos.length ? 'Já existe uma personagem com este nome' : 'Personagem com nome parecido'}</h3>
+      <p class="hint" style="margin-top:0">Você digitou “${escapeHtml(nome)}”. Escolha o que fazer.</p>
+      <div class="escolha-lista">
+        ${similares.map(p=>`<button class="btn btn-outline btn-block" type="button" data-v="usar:${p.id}">Usar “${escapeHtml(p.nome)}”</button>`).join('')}
+        <button class="btn btn-accent btn-block" type="button" data-v="criar">Criar “${escapeHtml(nome)}” como outra personagem</button>
+        <button class="btn btn-outline btn-block" type="button" data-v="cancelar" style="text-align:center">Cancelar</button>
+      </div>`);
+    if(!esc || esc==='cancelar') return null;
+    if(esc.startsWith('usar:')) return Number(esc.slice(5));
+  }
+  const id = await putRecord('personagens', {livroId, nome, comentario:''});
+  await reloadAll();
+  return id;
+}
+
+function abrirFormPersonagem(livroId, pid, leituraId, origem){
+  const p = pid ? PERSONAGENS.find(x=>x.id===pid) : null;
+  if(pid && !p) return;
+  openSubSheet(`<h3>${p ? 'Personagem' : 'Nova personagem'}</h3>
+    <label>Nome *</label><input type="text" id="pn-nome" value="${escapeHtml(p ? p.nome : '')}" autocomplete="off">
+    <label>Comentário</label><textarea id="pn-comentario" placeholder="Quem é, relação com as outras…">${escapeHtml(p ? (p.comentario||'') : '')}</textarea>
+    ${p ? `<button class="btn btn-outline btn-block" id="pn-ver" type="button" style="margin-top:12px">Ver anotações desta leitura sobre ${escapeHtml(p.nome)}</button>` : ''}
+    <div class="sheet-actions">
+      <button class="btn btn-outline" id="pn-cancel" type="button" style="flex:1">Cancelar</button>
+      <button class="btn btn-accent" id="pn-save" type="button" style="flex:1">Salvar</button>
+    </div>
+    ${p ? '<button class="btn btn-danger btn-block" id="pn-del" type="button" style="margin-top:10px">Excluir personagem</button>' : ''}`);
+  const $ = x=> document.getElementById(x);
+  $('pn-cancel').addEventListener('click', ()=> closeSubSheet());
+  $('pn-save').addEventListener('click', async ()=>{
+    const nome = limpaNome($('pn-nome').value);
+    if(!nome){ avisar('Informe o nome da personagem.'); return; }
+    const {exatos, parecidos} = personagensParecidas(livroId, nome, pid);
+    if(exatos.length){ avisar(`Já existe uma personagem chamada “${exatos[0].nome}” neste livro.`); return; }
+    if(parecidos.length && !await confirmar(`Já existe uma personagem com nome parecido: “${parecidos[0].nome}”.\n\nSalvar “${nome}” mesmo assim, como outra personagem?`)) return;
+    await putRecord('personagens', {...(p||{}), livroId, nome, comentario:$('pn-comentario').value.trim()});
+    closeSubSheet();
+    await reloadAll(); renderCurrent(); atualizarAbasLeitura(leituraId, origem);
+  });
+  if(p){
+    $('pn-ver').addEventListener('click', ()=>{
+      closeSubSheet(); _anotFiltro = pid; atualizarAbasLeitura(leituraId, origem); mostrarAbaLeitura('anotacoes');
+    });
+    $('pn-del').addEventListener('click', async ()=>{
+      const refs = anotacoesDaPersonagem(pid);
+      const msg = `Excluir a personagem “${p.nome}”?` + (refs.length ? `\n\nEla é citada em ${plural(refs.length,'anotação','anotações')} deste livro. As anotações continuam, mas deixam de citá-la.` : '') + '\n\nNão há como desfazer.';
+      if(!await confirmar(msg)) return;
+      for(const a of refs) await putRecord('anotacoes', {...a, personagemIds:(a.personagemIds||[]).filter(x=>x!==pid)});
+      await deleteRecord('personagens', pid);
+      if(_anotFiltro===pid) _anotFiltro = null;
+      closeSubSheet();
+      await reloadAll(); renderCurrent(); atualizarAbasLeitura(leituraId, origem);
+    });
+  }
+  if(!p) setTimeout(()=>{ const c = $('pn-nome'); if(c) c.focus(); }, 60);
+}
+
+/* Escolha de personagem dentro da anotação: existentes do livro (ainda não escolhidas) ou nova (pergunta o nome) */
+async function escolherPersonagemParaAnotacao(livroId, jaIds){
+  const disp = personagensDoLivro(livroId).filter(p=>!jaIds.includes(p.id));
+  const esc = await escolherNoPicker(`<h3>Personagem da anotação</h3>
+    <div class="escolha-lista">
+      ${disp.map(p=>`<button class="btn btn-outline btn-block" type="button" data-v="p:${p.id}">${escapeHtml(p.nome)}</button>`).join('')}
+      <button class="btn btn-accent btn-block" type="button" data-v="nova">+ Nova personagem</button>
+      <button class="btn btn-outline btn-block" type="button" data-v="cancelar" style="text-align:center">Cancelar</button>
+    </div>`);
+  if(!esc || esc==='cancelar') return null;
+  if(esc.startsWith('p:')) return Number(esc.slice(2));
+  await historicoAssentar();   // o seletor acabou de fechar: só abre o diálogo quando o history.back() dele terminar
+  const nome = await perguntar('Nome da nova personagem:', '');
+  if(nome===null) return null;
+  await historicoAssentar();   // idem: o diálogo acabou de fechar e a checagem pode abrir um seletor
+  return await criarPersonagemComChecagem(livroId, nome);
+}
+
+function abrirFormAnotacao(leituraId, aid, origem){
+  const lt = LEITURAS.find(x=>x.id===leituraId), l = lt && LIVROS.find(x=>x.id===lt.livroId); if(!l) return;
+  const a = aid ? ANOTACOES.find(x=>x.id===aid) : null;
+  if(aid && !a) return;
+  const iso0 = a ? a.dataHora : new Date().toISOString();
+  const data0 = dataLocalISO(iso0), hora0 = horaLocalISO(iso0);
+  let pids = a ? (a.personagemIds||[]).slice() : [];
+  openSubSheet(`<h3>${a ? 'Editar anotação' : 'Nova anotação'}</h3>
+    <label>Anotação *</label><textarea id="an-texto" style="min-height:110px">${escapeHtml(a ? a.texto : '')}</textarea>
+    <label>Página</label><input type="number" id="an-pagina" inputmode="numeric" min="0" value="${a && a.pagina!=null ? a.pagina : ''}" placeholder="Opcional (leitura na página ${paginaAtualLeitura(leituraId)})" autocomplete="off">
+    <label>Personagens</label>
+    <div class="chips" id="an-chips"></div>
+    <button class="btn btn-outline btn-sm" id="an-addp" type="button">+ Personagem</button>
+    <label>Data</label><input type="date" id="an-data" value="${data0}">
+    <label>Hora</label><input type="time" id="an-hora" value="${hora0}">
+    <div class="sheet-actions">
+      <button class="btn btn-outline" id="an-cancel" type="button" style="flex:1">Cancelar</button>
+      <button class="btn btn-accent" id="an-save" type="button" style="flex:1">Salvar</button>
+    </div>
+    ${a ? '<button class="btn btn-danger btn-block" id="an-del" type="button" style="margin-top:10px">Excluir anotação</button>' : ''}`);
+  const $ = x=> document.getElementById(x);
+  const chips = ()=>{ $('an-chips').innerHTML = pids.map(pid=>`<span class="chip"><span>${escapeHtml(nomePersonagem(pid))}</span><button type="button" data-rm="${pid}" aria-label="Remover personagem">✕</button></span>`).join(''); };
+  chips();
+  $('an-chips').addEventListener('click', e=>{
+    const b = e.target.closest('[data-rm]'); if(!b) return;
+    pids = pids.filter(x=>x!==Number(b.dataset.rm)); chips(); camadaSub.dirty = true; camadaSub.salvando = false;
+  });
+  $('an-addp').addEventListener('click', async ()=>{
+    const pid = await escolherPersonagemParaAnotacao(l.id, pids);
+    if(pid && !pids.includes(pid)){ pids.push(pid); chips(); camadaSub.dirty = true; camadaSub.salvando = false; }
+    camadaSub.salvando = false;
+  });
+  $('an-cancel').addEventListener('click', ()=> closeSubSheet());
+  $('an-save').addEventListener('click', async ()=>{
+    const texto = $('an-texto').value.trim();
+    if(!texto){ avisar('Escreva o texto da anotação.'); return; }
+    const raw = $('an-pagina').value.trim(); let pagina = null;
+    if(raw!==''){
+      pagina = Number(raw);
+      if(!Number.isInteger(pagina) || pagina<0){ avisar('Informe um número de página inteiro, de 0 para cima (ou deixe em branco).'); return; }
+      if(l.paginas && pagina>l.paginas){ avisar(`Este livro tem ${l.paginas} páginas. Informe uma página até ${l.paginas} (ou deixe em branco).`); return; }
+    }
+    const d = $('an-data').value, h = $('an-hora').value;
+    if(!d || !h){ avisar('Informe a data e a hora da anotação.'); return; }
+    let dataHora = iso0;
+    if(d!==data0 || h!==hora0){
+      const t = new Date(`${d}T${h}`).getTime();
+      if(isNaN(t)){ avisar('Data ou hora inválida.'); return; }
+      if(t > Date.now()+60000){ avisar('A anotação não pode estar no futuro.'); return; }
+      dataHora = new Date(t).toISOString();
+    } else if(!a) dataHora = new Date().toISOString();   // nova e sem mexer: hora exata do salvamento
+    await putRecord('anotacoes', {...(a||{}), leituraId, texto, pagina, dataHora, personagemIds:pids});
+    closeSubSheet();
+    await reloadAll(); renderCurrent(); atualizarAbasLeitura(leituraId, origem);
+  });
+  if(a) $('an-del').addEventListener('click', async ()=>{
+    if(!await confirmar('Excluir esta anotação?\n\nNão há como desfazer.')) return;
+    await deleteRecord('anotacoes', aid);
+    closeSubSheet();
+    await reloadAll(); renderCurrent(); atualizarAbasLeitura(leituraId, origem);
+  });
+  if(!a) setTimeout(()=>{ const c = $('an-texto'); if(c) c.focus(); }, 60);
 }
 
 /* Reabrir leitura finalizada (v1_07): volta a "em andamento", apaga a data de fim; histórico e anotações ficam.
@@ -2357,7 +2610,7 @@ document.getElementById('btnImportJson').addEventListener('click', async ()=>{
    ============================================================ */
 fillConfiguracoesForm();
 /* ---- PWA: versão, armazenamento persistente e service worker ---- */
-const APP_VERSION = 'v1_07';
+const APP_VERSION = 'v1_08';
 document.getElementById('appVersaoTxt').textContent = APP_VERSION;
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persist().then(ok=>{
