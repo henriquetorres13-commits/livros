@@ -418,6 +418,20 @@ header .sub{color:#E6D2D6;}
 .lt-registro{display:flex;gap:8px;align-items:stretch;margin-top:12px;}
 .lt-registro input{flex:1;min-width:0;font-size:20px;font-weight:700;text-align:center;}
 .lt-registro .btn{flex:none;}
+/* Histórico de progresso (v1_07) */
+.hist-seg{display:flex;gap:0;margin-bottom:10px;}
+.hist-seg button{flex:1;padding:7px 10px;font-size:13px;font-weight:600;background:var(--card);color:var(--ink-soft);border:1.5px solid var(--line);cursor:pointer;}
+.hist-seg button:first-child{border-radius:8px 0 0 8px;}
+.hist-seg button:last-child{border-radius:0 8px 8px 0;border-left:0;}
+.hist-seg button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.hist-grafico{width:100%;height:auto;display:block;}
+.hist-grafico text{fill:var(--ink-soft);font-size:10px;font-family:inherit;}
+.hist-reg{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 11px;margin-bottom:6px;cursor:pointer;}
+.hist-reg.sel{border-color:var(--accent);}
+.hist-reg .meta{font-size:12px;color:var(--ink-soft);margin-top:1px;}
+.hist-reg .menor{font-size:11px;font-weight:700;color:var(--danger);margin-left:6px;}
+.hist-acoes{display:none;gap:8px;margin-top:8px;}
+.hist-reg.sel .hist-acoes{display:flex;}
 </style>
 </head>
 <body>
@@ -1866,13 +1880,19 @@ function abrirLeitura(id, origem){
         <p class="hint">${ult ? `Último registro: ${fmtDataHora(ult.dataHora)} · ${regs.length} ${regs.length===1 ? 'registro' : 'registros'}` : 'Nenhuma página registrada ainda.'}</p>
         ${and ? `<div class="lt-registro"><input type="number" id="lt-pagina" inputmode="numeric" min="0" placeholder="Página atual" autocomplete="off"><button class="btn btn-accent" id="lt-registrar" type="button">Registrar página</button></div>` : ''}
       </div>
+      <div class="det-sec">
+        <div class="det-sec-t">Histórico</div>
+        <div id="lt-hist"></div>
+      </div>
     </div>
-    ${and ? '<button class="btn btn-outline btn-block" id="lt-finalizar" type="button" style="margin-top:16px">✓ Finalizar leitura</button>' : ''}
+    ${and ? '<button class="btn btn-outline btn-block" id="lt-finalizar" type="button" style="margin-top:16px">✓ Finalizar leitura</button>' : '<button class="btn btn-outline btn-block" id="lt-reabrir" type="button" style="margin-top:16px">↺ Reabrir leitura</button>'}
     <button class="btn btn-danger btn-block" id="lt-del" type="button" style="margin-top:10px">Excluir leitura</button>`);
   const $ = x=> document.getElementById(x);
   $('lt-close').addEventListener('click', ()=>{ if(origem==='livro') abrirLivro(l.id); else closeSheet(); });
   $('lt-del').addEventListener('click', ()=> excluirLeitura(id, origem));
-  if(!and) return;
+  if(_histLeitura !== id){ _histLeitura = id; _histModo = 'grafico'; }   // cada leitura abre no gráfico
+  desenharHistorico(id, origem);
+  if(!and){ $('lt-reabrir').addEventListener('click', ()=> reabrirLeitura(id, origem)); return; }
   const reg = $('lt-registrar'), campo = $('lt-pagina');
   const registrar = async ()=>{
     const raw = campo.value.trim();
@@ -1908,7 +1928,7 @@ async function finalizarLeitura(id, origem){
       <p class="hint">“Alterar para 100%” registra também a página ${l.paginas} no histórico.</p>`);
     if(esc!=='manter' && esc!=='cem') return;
     completar = esc==='cem';
-  } else if(!await confirmar('Finalizar esta leitura?\n\nO livro continua na sua biblioteca e você poderá iniciar uma nova leitura depois.')) return;
+  } else if(!await confirmar('Finalizar esta leitura?\n\nO livro continua na sua biblioteca e você poderá iniciar uma nova leitura depois. Se finalizar por engano, dá para reabrir a leitura.')) return;
   const agora = new Date().toISOString();
   if(completar) await putRecord('progressos', {leituraId:id, pagina:l.paginas, dataHora:agora});
   await putRecord('leituras', {...lt, status:'finalizada', fim:agora});
@@ -1928,6 +1948,142 @@ async function excluirLeitura(id, origem){
   await deleteRecord('leituras', id);
   await reloadAll(); renderCurrent();
   if(origem==='livro') abrirLivro(l.id); else closeSheet();
+}
+
+/* Reabrir leitura finalizada (v1_07): volta a "em andamento", apaga a data de fim; histórico e anotações ficam.
+   Mesma regra de iniciar: se já há outra leitura em andamento do livro, avisa antes. */
+async function reabrirLeitura(id, origem){
+  const lt = LEITURAS.find(x=>x.id===id);
+  const l = lt && LIVROS.find(x=>x.id===lt.livroId); if(!lt || !l || lt.status!=='finalizada') return;
+  const outra = leiturasAndamento(l.id).filter(x=>x.id!==id);
+  const msg = outra.length
+    ? `Já há uma leitura em andamento de "${l.titulo}" (iniciada em ${fmtDataCurta(outra[0].inicio)}).\n\nReabrir esta também, mesmo assim?`
+    : `Reabrir esta leitura?\n\nA data de término (${fmtDataHora(lt.fim)}) será apagada e você poderá registrar páginas de novo.`;
+  if(!await confirmar(msg)) return;
+  await putRecord('leituras', {...lt, status:'andamento', fim:null});
+  await reloadAll(); renderCurrent(); abrirLeitura(id, origem);
+}
+
+/* ---- Histórico de progresso (v1_07): Gráfico (padrão) ou Lista, dentro da tela da leitura ---- */
+let _histModo = 'grafico', _histLeitura = null, _histSel = null;
+const p2 = n=> String(n).padStart(2,'0');
+function dataLocalISO(iso){ const d = new Date(iso); return `${d.getFullYear()}-${p2(d.getMonth()+1)}-${p2(d.getDate())}`; }
+function horaLocalISO(iso){ const d = new Date(iso); return `${p2(d.getHours())}:${p2(d.getMinutes())}`; }
+/* Registros em ordem cronológica, marcando os "regressivos" (página menor que a do registro anterior) */
+function registrosComRegressao(leituraId){
+  let ant = null;
+  return progressosDaLeitura(leituraId).map(r=>{ const menor = ant!==null && r.pagina < ant; ant = r.pagina; return {...r, menor}; });
+}
+function graficoProgressoSVG(lt, l, regs){
+  const W=340, H=190, mL=34, mR=12, mT=12, mB=26, iw=W-mL-mR, ih=H-mT-mB;
+  const t0 = new Date(lt.inicio).getTime();
+  const pts = regs.map(r=>({t:Math.max(t0, new Date(r.dataHora).getTime()), p:r.pagina, menor:r.menor}));
+  let t1 = Math.max(...pts.map(x=>x.t)); if(t1 - t0 < 60000) t1 = t0 + 60000;
+  const yMax = Math.max(l.paginas||0, ...pts.map(x=>x.p), 1);
+  const X = t=> (mL + (t - t0) / (t1 - t0) * iw).toFixed(1);
+  const Y = p=> (mT + ih - p / yMax * ih).toFixed(1);
+  const curto = (t1 - t0) < 86400000;
+  const rotX = t=>{ const iso = new Date(t).toISOString(); return curto ? horaLocalISO(iso) : fmtDataCurta(iso).slice(0,5); };
+  let s = `<svg class="hist-grafico" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico da evolução das páginas lidas">`;
+  [0, .5, 1].forEach(f=>{
+    const y = Y(yMax*f);
+    s += `<line x1="${mL}" x2="${W-mR}" y1="${y}" y2="${y}" style="stroke:var(--line)" stroke-width="1"/>`
+       + `<text x="${mL-5}" y="${(+y+3.5).toFixed(1)}" text-anchor="end">${Math.round(yMax*f)}</text>`;
+  });
+  s += `<text x="${mL}" y="${H-8}" text-anchor="start">${rotX(t0)}</text><text x="${W-mR}" y="${H-8}" text-anchor="end">${rotX(t1)}</text>`;
+  // início da leitura (página 0): âncora tracejada, não é um registro
+  let ant = {t:t0, p:0};
+  pts.forEach((pt, i)=>{
+    const cor = pt.menor ? 'var(--danger)' : 'var(--accent)';
+    s += `<line x1="${X(ant.t)}" y1="${Y(ant.p)}" x2="${X(pt.t)}" y2="${Y(pt.p)}" style="stroke:${i===0?'var(--ink-soft)':cor}" stroke-width="2" stroke-linecap="round"${i===0?' stroke-dasharray="4 4"':''}/>`;
+    ant = pt;
+  });
+  s += `<circle cx="${X(t0)}" cy="${Y(0)}" r="3" style="fill:var(--card);stroke:var(--ink-soft)" stroke-width="1.5"/>`;
+  pts.forEach(pt=>{
+    s += pt.menor
+      ? `<circle cx="${X(pt.t)}" cy="${Y(pt.p)}" r="4.5" style="fill:var(--card);stroke:var(--danger)" stroke-width="2.2"/>`
+      : `<circle cx="${X(pt.t)}" cy="${Y(pt.p)}" r="4.5" style="fill:var(--accent)"/>`;
+  });
+  return s + '</svg>';
+}
+function desenharHistorico(id, origem){
+  const lt = LEITURAS.find(x=>x.id===id);
+  const l = lt && LIVROS.find(x=>x.id===lt.livroId);
+  const el = document.getElementById('lt-hist'); if(!lt || !l || !el) return;
+  const regs = registrosComRegressao(id);
+  if(!regs.length){ el.innerHTML = '<p class="hint" style="margin-top:0">Nenhuma página registrada ainda.</p>'; return; }
+  const temMenor = regs.some(r=>r.menor);
+  let corpo;
+  if(_histModo==='lista'){
+    corpo = regs.slice().reverse().map(r=>{
+      const pct = l.paginas ? ` · ${Math.min(100, Math.floor(r.pagina / l.paginas * 100))}%` : '';
+      return `<div class="hist-reg ${_histSel===r.id?'sel':''}" data-p="${r.id}"><b>Página ${r.pagina}</b>${pct}${r.menor ? '<span class="menor">↓ menor que a anterior</span>' : ''}`
+        + `<div class="meta">${fmtDataHora(r.dataHora)}</div>`
+        + `<div class="hist-acoes"><button class="btn btn-outline btn-sm" type="button" data-ed="${r.id}">Editar</button><button class="btn btn-danger btn-sm" type="button" data-ex="${r.id}">Excluir</button></div></div>`;
+    }).join('') + '<p class="hint">Toque num registro para editar ou excluir.</p>';
+  } else {
+    corpo = graficoProgressoSVG(lt, l, regs)
+      + `<p class="hint" style="margin-top:4px">● registro${temMenor ? ' · <span style="color:var(--danger)">○ página menor que a anterior</span>' : ''} · linha tracejada: início da leitura (página 0)</p>`;
+  }
+  el.innerHTML = `<div class="hist-seg"><button type="button" data-m="grafico" class="${_histModo==='grafico'?'active':''}">Gráfico</button><button type="button" data-m="lista" class="${_histModo==='lista'?'active':''}">Lista</button></div>` + corpo;
+  el.querySelectorAll('.hist-seg button').forEach(b=> b.addEventListener('click', ()=>{ _histModo = b.dataset.m; _histSel = null; desenharHistorico(id, origem); }));
+  el.querySelectorAll('.hist-reg').forEach(c=> c.addEventListener('click', e=>{
+    if(e.target.closest('button')) return;
+    const rid = Number(c.dataset.p);
+    _histSel = (_histSel===rid) ? null : rid;
+    el.querySelectorAll('.hist-reg').forEach(x=> x.classList.toggle('sel', Number(x.dataset.p)===_histSel));
+  }));
+  el.querySelectorAll('[data-ed]').forEach(b=> b.addEventListener('click', ()=> editarProgresso(Number(b.dataset.ed), origem)));
+  el.querySelectorAll('[data-ex]').forEach(b=> b.addEventListener('click', ()=> excluirProgresso(Number(b.dataset.ex), origem)));
+}
+
+function editarProgresso(pid, origem){
+  const p = PROGRESSOS.find(x=>x.id===pid);
+  const lt = p && LEITURAS.find(x=>x.id===p.leituraId);
+  const l = lt && LIVROS.find(x=>x.id===lt.livroId); if(!l) return;
+  const data0 = dataLocalISO(p.dataHora), hora0 = horaLocalISO(p.dataHora);
+  openSubSheet(`<h3>Editar registro</h3>
+    <label>Página</label><input type="number" id="pg-pagina" inputmode="numeric" min="0" value="${p.pagina}" autocomplete="off">
+    ${l.paginas ? `<p class="hint" style="margin-top:4px">O livro tem ${l.paginas} páginas.</p>` : ''}
+    <label>Data</label><input type="date" id="pg-data" value="${data0}">
+    <label>Hora</label><input type="time" id="pg-hora" value="${hora0}">
+    <div class="sheet-actions">
+      <button class="btn btn-outline" id="pg-cancel" type="button" style="flex:1">Cancelar</button>
+      <button class="btn btn-accent" id="pg-save" type="button" style="flex:1">Salvar</button>
+    </div>`);
+  const $ = x=> document.getElementById(x);
+  $('pg-cancel').addEventListener('click', ()=> closeSubSheet());
+  $('pg-save').addEventListener('click', async ()=>{
+    const raw = $('pg-pagina').value.trim(), nova = Number(raw);
+    if(raw==='' || !Number.isInteger(nova) || nova<0){ avisar('Informe um número de página inteiro, de 0 para cima.'); return; }
+    if(l.paginas && nova>l.paginas){ avisar(`Este livro tem ${l.paginas} páginas. Informe uma página até ${l.paginas}.`); return; }
+    const d = $('pg-data').value, h = $('pg-hora').value;
+    if(!d || !h){ avisar('Informe a data e a hora do registro.'); return; }
+    // data/hora não mudou: mantém o instante original (com segundos), para não bagunçar a ordem
+    let dataHora = p.dataHora;
+    if(d!==data0 || h!==hora0){
+      const t = new Date(`${d}T${h}`).getTime();
+      if(isNaN(t)){ avisar('Data ou hora inválida.'); return; }
+      if(t < Math.floor(new Date(lt.inicio).getTime()/60000)*60000){ avisar(`O registro não pode ser anterior ao início da leitura (${fmtDataHora(lt.inicio)}).`); return; }
+      if(lt.status==='finalizada' && lt.fim && t > new Date(lt.fim).getTime()+59999){ avisar(`O registro não pode ser posterior ao fim da leitura (${fmtDataHora(lt.fim)}).`); return; }
+      if(t > Date.now()+60000){ avisar('O registro não pode estar no futuro.'); return; }
+      dataHora = new Date(t).toISOString();
+    }
+    await putRecord('progressos', {...p, pagina:nova, dataHora});
+    closeSubSheet();
+    await reloadAll(); renderCurrent(); _histSel = pid; abrirLeitura(lt.id, origem);
+  });
+  setTimeout(()=>{ const c = $('pg-pagina'); if(c){ c.focus(); c.select(); } }, 60);
+}
+
+async function excluirProgresso(pid, origem){
+  const p = PROGRESSOS.find(x=>x.id===pid);
+  const lt = p && LEITURAS.find(x=>x.id===p.leituraId);
+  const l = lt && LIVROS.find(x=>x.id===lt.livroId); if(!l) return;
+  if(!await confirmar(`Excluir o registro da página ${p.pagina} (${fmtDataHora(p.dataHora)})?\n\nA página atual da leitura passa a ser a do registro anterior. Não há como desfazer.`)) return;
+  await deleteRecord('progressos', pid);
+  _histSel = null;
+  await reloadAll(); renderCurrent(); abrirLeitura(lt.id, origem);
 }
 
 /* Aba Leituras: leituras em andamento, a mais recentemente lida primeiro */
@@ -2201,7 +2357,7 @@ document.getElementById('btnImportJson').addEventListener('click', async ()=>{
    ============================================================ */
 fillConfiguracoesForm();
 /* ---- PWA: versão, armazenamento persistente e service worker ---- */
-const APP_VERSION = 'v1_06';
+const APP_VERSION = 'v1_07';
 document.getElementById('appVersaoTxt').textContent = APP_VERSION;
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persist().then(ok=>{
