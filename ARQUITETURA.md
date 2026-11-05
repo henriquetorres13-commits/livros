@@ -1,6 +1,6 @@
 # ARQUITETURA.md — App "Livros"
 
-Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_05 em 2026-11-04; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
+Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_06 em 2026-11-04; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
 
 O escopo funcional está em `ESPECIFICACAO.md`; a ordem de entrega e o andamento estão em `PLANO.md`.
 
@@ -61,8 +61,8 @@ Todos os stores: `{keyPath:'id', autoIncrement:true}`. Acesso: `getAll`, `putRec
 | `livros` | `LIVROS` | título (obrigatório), subtítulo, isbn, `autorIds[]`, `capa` (data URL), páginas, descrição, comentários, `categoriaId`/`subcategoriaId`, `situacao` (`desejo`\|`proprio`\|`emprestado`), `emprestadoDe` |
 | `autores` | `AUTORES` | só `nome` (v1_03). Excluir um autor tira o id de `autorIds` dos livros; os livros ficam |
 | `categorias`, `subcategorias` | `CATS`, `SUBCATS` | classificação de livros (subcategoria tem `categoriaId`) |
-| `leituras` | `LEITURAS` | `livroId`, início, fim, `status` (`andamento`\|`finalizada`) |
-| `progressos` | `PROGRESSOS` | `leituraId`, página, data/hora (preserva histórico, aceita regressão) |
+| `leituras` | `LEITURAS` | `livroId`, `inicio` e `fim` (ISO/UTC; `fim` null em andamento), `status` (`andamento`\|`finalizada`). A página atual **não** é gravada aqui (ver 7e) |
+| `progressos` | `PROGRESSOS` | `leituraId`, `pagina`, `dataHora` (ISO/UTC; preserva histórico, aceita regressão) |
 | `anotacoes` | `ANOTACOES` | `leituraId`, texto, data/hora, página, referências a personagens |
 | `personagens` | `PERSONAGENS` | `livroId`, `nome`, comentário (compartilhadas entre leituras do livro) |
 | `precos` | `PRECOS` | `livroId`, preço, data, `localId`, `comprou` (pago × observado) |
@@ -88,7 +88,7 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 ### Livros (v1_02)
 
 - Biblioteca = livros com `situacao` `proprio`/`emprestado`; Desejos = `desejo`. Marcar como comprado só troca `situacao` para `proprio` (mesmo registro, nada se perde).
-- Listagem: `renderLivros(aba)`; grade/lista alternável na tela (`layoutTela`, reinicia com `CONFIG.layoutPadrao`, não é gravado). Só capa e título (o % de leitura entra na v1_06).
+- Listagem: `renderLivros(aba)`; grade/lista alternável na tela (`layoutTela`, reinicia com `CONFIG.layoutPadrao`, não é gravado). Capa, título e, quando há leitura em andamento e o livro tem total de páginas, a barra com o % (v1_06).
 - Detalhe `abrirLivro(id)` (sheet principal, modo leitura) e formulário `abrirFormLivro(id, situacaoInicial)`; salvar/cancelar de edição voltam ao detalhe sem empilhar nova entrada de histórico.
 - `autorIds` é gravado como `[]` (autores na v1_03); duplicidade de ISBN também na v1_03.
 - Exclusão `excluirLivro`: apaga em cascata leituras, progressos, anotações, personagens e preços do livro, avisando as quantidades.
@@ -120,6 +120,18 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 - **Lanterna:** botão "🔦 Luz" só aparece se a câmera declarar `torch` (`applyConstraints`).
 - **Sem suporte:** sem `BarcodeDetector` (ou sem EAN-13), sem contexto seguro ou sem `mediaDevices`, o app avisa e o usuário digita o ISBN. Permissão negada, câmera ausente/ocupada têm mensagens próprias (`erroCamera`). **Não há leitor em JavaScript embutido** (o Chrome do Android traz o `BarcodeDetector`); se algum aparelho não tiver, decidir o fallback.
 - Sem mudança de esquema (`DB_VERSION` segue 1); o service worker não precisa de ajuste.
+
+## 7e. Leituras (v1_06)
+
+- **Dados:** `leitura = {livroId, inicio, fim, status}` e `progresso = {leituraId, pagina, dataHora}`; datas em `new Date().toISOString()` (UTC), exibidas no horário local por `fmtDataHora`/`fmtDataCurta`. **A página atual é derivada**: página do último progresso (ordenado por `dataHora`, depois `id`), ou 0 se não há registro (`paginaAtualLeitura`). Assim editar/excluir registros (v1_07) nunca deixa a leitura inconsistente. Sem mudança de esquema (`DB_VERSION` segue 1); o backup genérico já leva os dois stores (testado ida e volta).
+- **Helpers:** `leiturasDoLivro`, `leiturasAndamento` (mais recente primeiro; normalmente 0 ou 1), `progressosDaLeitura`, `ultimoProgresso`, `percentualLeitura(lt, livro)` (arredonda **para baixo**: 349 de 350 = 99%; `null` sem total de páginas; teto 100) e `percentualLivro(livroId)` (só leitura em andamento; usado nas listagens).
+- **Detalhe do livro:** seção "Minhas leituras" (`minhasLeiturasHTML`): em andamento em destaque, finalizadas em lista (mais nova primeiro, "Leitura N" pela ordem de início) e botão "Iniciar leitura" (vira "Iniciar nova leitura", em contorno se já há uma em andamento). Vale para qualquer situação do livro (inclusive desejo). `iniciarLeitura`: se já há uma em andamento, `confirmar` antes; ao iniciar abre a tela da leitura.
+- **Tela da leitura** `abrirLeitura(id, origem)` (sheet **principal**, substitui o conteúdo como o formulário do livro; origem `'livro'` volta ao detalhe, `'lista'` fecha; o voltar do celular fecha a sheet): título, status, datas, página atual grande, % e barra, último registro, campo "Página atual" + "Registrar página" (Enter também), "Finalizar leitura" e "Excluir leitura". Ainda **sem abas e sem histórico** (gráfico/lista na v1_07; abas Anotações/Personagens na v1_08).
+- **Registrar:** inteiro ≥ 0; acima do total de páginas (se houver) é impedido; menor que a última página registrada pede `confirmar` citando a anterior (cancelar não grava); igual ou maior grava direto. Data/hora automáticas.
+- **Finalizar** (`finalizarLeitura`): com total de páginas e progresso < 100% abre o seletor (`escolherNoPicker`): manter página atual / alterar para 100% (grava também um progresso com a última página) / voltar; nos demais casos só `confirmar` (a finalização não tem "reabrir"). Grava `fim` e `status:'finalizada'`; leitura finalizada não aceita novos registros.
+- **Excluir leitura** (`excluirLeitura`, não está na especificação; necessária para desfazer início ou finalização por engano): `confirmar` com contagem; apaga a leitura, seus progressos e suas anotações (`leituraId`); o livro e as outras leituras ficam.
+- **Aba Leituras** (`renderLeituras`, `#leituras-lista`): só leituras em andamento, a de atividade mais recente primeiro (último progresso, senão início); card com capa, título, página/%, barra e data de início; toque abre `abrirLeitura(id,'lista')`. É também a página inicial padrão.
+- **Armadilha:** o CSS `.det-sec-t` usa `text-transform:uppercase`, então `innerText` devolve maiúsculas; nos testes Playwright conferir textos com `textContent`.
 
 ## 8. Backup (reaproveitado do Preços, adaptado)
 

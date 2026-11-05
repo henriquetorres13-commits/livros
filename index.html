@@ -391,6 +391,33 @@ header .sub{color:#E6D2D6;}
 .rev-row .rcapa{display:flex;gap:10px;align-items:flex-end;margin-top:4px;}
 .rev-row .rcapa img{width:64px;height:96px;object-fit:cover;border-radius:6px;border:1px solid var(--line);}
 .rev-row .rcapa .rcl{font-size:11px;color:var(--ink-soft);text-align:center;}
+/* ---- Leituras (v1_06): barra de percentual, cards, tela da leitura ---- */
+.pct-barra{display:block;height:6px;border-radius:4px;background:var(--paper-alt);border:1px solid var(--line);overflow:hidden;}
+.pct-barra i{display:block;height:100%;background:var(--accent);}
+.livro-pct{display:flex;align-items:center;gap:6px;margin-top:4px;}
+.livro-pct .pct-barra{flex:1;min-width:0;}
+.livro-pct b{font-size:11px;color:var(--ink-soft);flex:none;}
+.livros-lista .livro-corpo{min-width:0;flex:1;}
+.leit-item{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:8px;cursor:pointer;}
+.leit-item:active{opacity:.7;}
+.leit-item .capa{width:46px;height:67px;object-fit:cover;border-radius:4px;border:1px solid var(--line);flex:none;background:var(--paper-alt);}
+.leit-item .capa-ph{display:flex;align-items:center;justify-content:center;font-size:22px;}
+.leit-item .corpo{min-width:0;flex:1;}
+.leit-item .tit{font-weight:700;font-size:15px;}
+.leit-item .meta{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+.det-sec{margin-top:16px;padding-top:12px;border-top:1px solid var(--line);}
+.det-sec-t{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin-bottom:8px;}
+.leit-linha{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:8px;cursor:pointer;}
+.leit-linha:active{opacity:.7;}
+.leit-linha.destaque{border-color:var(--accent);background:var(--accent-soft);}
+.leit-linha .t{font-weight:700;font-size:14px;}
+.leit-linha .meta{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+.leit-linha .pct-barra{margin-top:6px;}
+.lt-pag-grande{font-size:26px;font-weight:800;line-height:1.1;}
+.lt-pag-grande small{font-size:14px;font-weight:400;color:var(--ink-soft);}
+.lt-registro{display:flex;gap:8px;align-items:stretch;margin-top:12px;}
+.lt-registro input{flex:1;min-width:0;font-size:20px;font-weight:700;text-align:center;}
+.lt-registro .btn{flex:none;}
 </style>
 </head>
 <body>
@@ -428,7 +455,7 @@ header .sub{color:#E6D2D6;}
   <!-- ================= LEITURAS ================= -->
   <section class="view" id="view-leituras">
     <h2 class="section-title">Leituras</h2>
-    <div class="vazio">Nenhuma leitura em andamento.</div>
+    <div id="leituras-lista"></div>
   </section>
 
   <!-- ================= PESQUISA ================= -->
@@ -1111,6 +1138,7 @@ function renderCurrent(){
   renderAvisoBackup();
   document.getElementById('fabAdd').style.display = (currentTab==='biblioteca' || currentTab==='desejos') ? 'flex' : 'none';
   if(currentTab==='biblioteca' || currentTab==='desejos') renderLivros(currentTab);
+  if(currentTab==='leituras') renderLeituras();
   if(currentTab==='categorias') renderCategorias();
   if(currentTab==='autores') renderAutores();
   if(currentTab==='exportar') renderBackupInfo();
@@ -1466,7 +1494,9 @@ function abrirRevisaoIsbn(res, atual, aoAplicar){
 function livroItemHTML(l){
   const capa = l.capa ? `<img class="capa" src="${l.capa}" alt="">` : `<div class="capa capa-ph">📕</div>`;
   const tit = `<div class="livro-tit">${escapeHtml(l.titulo)}</div>`;
-  return `<div class="livro-item" data-id="${l.id}">${capa}${tit}</div>`;
+  const pct = percentualLivro(l.id);
+  const pctHtml = pct==null ? '' : `<div class="livro-pct"><span class="pct-barra"><i style="width:${pct}%"></i></span><b>${pct}%</b></div>`;
+  return `<div class="livro-item" data-id="${l.id}">${capa}<div class="livro-corpo">${tit}${pctHtml}</div></div>`;
 }
 function renderLivros(aba){
   const el = document.getElementById(aba==='desejos' ? 'livros-des' : 'livros-bib');
@@ -1506,6 +1536,7 @@ function abrirLivro(id){
       ${kv('Descrição', l.descricao)}
       ${kv('Meus comentários', l.comentarios)}
     </div>
+    ${minhasLeiturasHTML(l)}
   </div>
   ${l.situacao==='desejo' ? '<button class="btn btn-accent btn-block" id="lv-comprei" type="button" style="margin-top:14px">✓ Marcar como comprado</button>' : ''}
   <div class="sheet-actions">
@@ -1516,6 +1547,8 @@ function abrirLivro(id){
   document.getElementById('lv-close').addEventListener('click', ()=> closeSheet());
   document.getElementById('lv-edit').addEventListener('click', ()=> abrirFormLivro(id));
   document.getElementById('lv-del').addEventListener('click', ()=> excluirLivro(id));
+  document.getElementById('lv-iniciar').addEventListener('click', ()=> iniciarLeitura(id));
+  document.querySelectorAll('#lv-leituras [data-lt]').forEach(el=> el.addEventListener('click', ()=> abrirLeitura(Number(el.dataset.lt), 'livro')));
   const bc = document.getElementById('lv-comprei');
   if(bc) bc.addEventListener('click', async ()=>{
     if(!await confirmar(`Marcar "${l.titulo}" como comprado?\n\nO livro sai da lista de desejos e passa a aparecer na Biblioteca.`)) return;
@@ -1746,6 +1779,175 @@ function abrirFormLivro(id, situacaoInicial){
     if(l) abrirLivro(id); else camadaMain.fecharAgora();
   });
   setTimeout(()=>{ if(!l) $('lv-titulo').focus(); }, 60);
+}
+
+/* ============================================================
+   LEITURAS (v1_06): iniciar, registrar página, finalizar, excluir, aba Leituras, % nas listagens
+   leitura = {livroId, inicio, fim, status:'andamento'|'finalizada'}  (datas em ISO/UTC, exibidas no horário local)
+   progresso = {leituraId, pagina, dataHora}. A página atual NÃO é gravada na leitura: é a do último progresso
+   (0 se não há registro), assim editar/excluir registros (v1_07) nunca deixa a leitura inconsistente.
+   ============================================================ */
+function fmtDataHora(iso){
+  const d = new Date(iso); if(!iso || isNaN(d)) return '';
+  const p = n=> String(n).padStart(2,'0');
+  return `${p(d.getDate())}/${p(d.getMonth()+1)}/${d.getFullYear()} ${p(d.getHours())}:${p(d.getMinutes())}`;
+}
+function fmtDataCurta(iso){ return fmtDataHora(iso).slice(0,10); }
+function leiturasDoLivro(livroId){
+  return LEITURAS.filter(x=>x.livroId===livroId).sort((a,b)=> (a.inicio||'').localeCompare(b.inicio||'') || a.id-b.id);
+}
+function leiturasAndamento(livroId){   // normalmente 0 ou 1; mais de uma só se o usuário confirmou iniciar outra
+  return leiturasDoLivro(livroId).filter(x=>x.status==='andamento').reverse();
+}
+function progressosDaLeitura(leituraId){
+  return PROGRESSOS.filter(p=>p.leituraId===leituraId).sort((a,b)=> (a.dataHora||'').localeCompare(b.dataHora||'') || a.id-b.id);
+}
+function ultimoProgresso(leituraId){ const l = progressosDaLeitura(leituraId); return l.length ? l[l.length-1] : null; }
+function paginaAtualLeitura(leituraId){ const u = ultimoProgresso(leituraId); return u ? u.pagina : 0; }
+/* % arredondado para baixo (349 de 350 = 99%); null se o livro não tem total de páginas */
+function percentualLeitura(lt, livro){
+  if(!livro || !livro.paginas) return null;
+  return Math.min(100, Math.floor(paginaAtualLeitura(lt.id) / livro.paginas * 100));
+}
+/* % mostrado nas listagens: só de leitura em andamento (a mais recente) e com total de páginas */
+function percentualLivro(livroId){
+  const a = leiturasAndamento(livroId)[0];
+  return a ? percentualLeitura(a, LIVROS.find(x=>x.id===livroId)) : null;
+}
+function barraPct(pct){ return pct==null ? '' : `<span class="pct-barra"><i style="width:${pct}%"></i></span>`; }
+function textoProgresso(lt, l){
+  const pag = paginaAtualLeitura(lt.id), pct = percentualLeitura(lt, l);
+  return l.paginas ? `Página ${pag} de ${l.paginas} (${pct}%)` : `Página ${pag}`;
+}
+
+/* Seção "Minhas leituras" do detalhe do livro */
+function minhasLeiturasHTML(l){
+  const todas = leiturasDoLivro(l.id);
+  const and = leiturasAndamento(l.id);
+  const fin = todas.filter(x=>x.status==='finalizada').reverse();
+  const linha = (lt, destaque)=>{
+    const datas = lt.status==='finalizada' ? `${fmtDataCurta(lt.inicio)} → ${fmtDataCurta(lt.fim)}` : `Iniciada em ${fmtDataCurta(lt.inicio)}`;
+    return `<div class="leit-linha ${destaque?'destaque':''}" data-lt="${lt.id}"><div class="t">${destaque ? 'Em andamento' : 'Leitura '+(todas.indexOf(lt)+1)}</div>`
+      + `<div class="meta">${datas} · ${textoProgresso(lt, l)}</div>${barraPct(percentualLeitura(lt, l))}</div>`;
+  };
+  return `<div class="det-sec" id="lv-leituras"><div class="det-sec-t">Minhas leituras</div>`
+    + and.map(x=>linha(x, true)).join('') + fin.map(x=>linha(x, false)).join('')
+    + (todas.length ? '' : '<p class="hint" style="margin-top:0">Nenhuma leitura ainda.</p>')
+    + `<button class="btn ${and.length ? 'btn-outline' : 'btn-accent'} btn-block" id="lv-iniciar" type="button">▶ Iniciar ${todas.length ? 'nova ' : ''}leitura</button></div>`;
+}
+
+async function iniciarLeitura(livroId){
+  const l = LIVROS.find(x=>x.id===livroId); if(!l) return;
+  const em = leiturasAndamento(livroId);
+  if(em.length && !await confirmar(`Já há uma leitura em andamento de "${l.titulo}" (iniciada em ${fmtDataCurta(em[0].inicio)}).\n\nIniciar outra mesmo assim?`)) return;
+  const id = await putRecord('leituras', {livroId, inicio:new Date().toISOString(), fim:null, status:'andamento'});
+  await reloadAll(); renderCurrent();
+  abrirLeitura(id, 'livro');
+}
+
+/* Tela da leitura (sheet principal). origem: 'livro' (volta ao detalhe) ou 'lista' (aba Leituras: fecha) */
+function abrirLeitura(id, origem){
+  const lt = LEITURAS.find(x=>x.id===id);
+  const l = lt && LIVROS.find(x=>x.id===lt.livroId);
+  if(!lt || !l){ closeSheet(); return; }
+  const and = lt.status==='andamento';
+  const pag = paginaAtualLeitura(id), pct = percentualLeitura(lt, l);
+  const regs = progressosDaLeitura(id), ult = regs[regs.length-1];
+  const num = leiturasDoLivro(l.id).indexOf(lt) + 1;
+  openSheet(`<button class="btn btn-outline btn-sm" id="lt-close" type="button" style="margin-bottom:12px">← ${origem==='livro' ? 'Voltar ao livro' : 'Fechar'}</button>
+    <div class="leitura">
+      <h3 class="det-tit">${escapeHtml(l.titulo)}</h3>
+      <div style="margin-top:8px"><span class="badge ${and ? 'badge-bad' : 'badge-good'}">${and ? 'Em andamento' : 'Finalizada'}</span><span class="hint">Leitura ${num}</span></div>
+      <div class="hint" style="margin-top:6px">Iniciada em ${fmtDataHora(lt.inicio)}${and ? '' : `<br>Finalizada em ${fmtDataHora(lt.fim)}`}</div>
+      <div class="det-sec" style="margin-top:14px">
+        <div class="det-sec-t">Progresso</div>
+        <div class="lt-pag-grande">${pag} <small>${l.paginas ? `de ${l.paginas} páginas · ${pct}%` : 'página atual'}</small></div>
+        ${l.paginas ? `<div style="margin-top:8px">${barraPct(pct)}</div>` : '<p class="hint">Este livro não tem o total de páginas cadastrado. Informe-o em Editar livro para ver o percentual.</p>'}
+        <p class="hint">${ult ? `Último registro: ${fmtDataHora(ult.dataHora)} · ${regs.length} ${regs.length===1 ? 'registro' : 'registros'}` : 'Nenhuma página registrada ainda.'}</p>
+        ${and ? `<div class="lt-registro"><input type="number" id="lt-pagina" inputmode="numeric" min="0" placeholder="Página atual" autocomplete="off"><button class="btn btn-accent" id="lt-registrar" type="button">Registrar página</button></div>` : ''}
+      </div>
+    </div>
+    ${and ? '<button class="btn btn-outline btn-block" id="lt-finalizar" type="button" style="margin-top:16px">✓ Finalizar leitura</button>' : ''}
+    <button class="btn btn-danger btn-block" id="lt-del" type="button" style="margin-top:10px">Excluir leitura</button>`);
+  const $ = x=> document.getElementById(x);
+  $('lt-close').addEventListener('click', ()=>{ if(origem==='livro') abrirLivro(l.id); else closeSheet(); });
+  $('lt-del').addEventListener('click', ()=> excluirLeitura(id, origem));
+  if(!and) return;
+  const reg = $('lt-registrar'), campo = $('lt-pagina');
+  const registrar = async ()=>{
+    const raw = campo.value.trim();
+    if(raw===''){ avisar('Informe a página em que você está.'); return; }
+    const nova = Number(raw);
+    if(!Number.isInteger(nova) || nova<0){ avisar('Informe um número de página inteiro, de 0 para cima.'); return; }
+    if(l.paginas && nova>l.paginas){ avisar(`Este livro tem ${l.paginas} páginas. Informe uma página até ${l.paginas}.`); return; }
+    const ultimo = ultimoProgresso(id);
+    if(ultimo && nova<ultimo.pagina && !await confirmar(`A última página registrada foi a ${ultimo.pagina} (${fmtDataHora(ultimo.dataHora)}).\n\nVocê informou a ${nova}, que é menor.\n\nRegistrar mesmo assim? Os registros anteriores continuam no histórico.`)) return;
+    reg.disabled = true;
+    await putRecord('progressos', {leituraId:id, pagina:nova, dataHora:new Date().toISOString()});
+    await reloadAll(); renderCurrent(); abrirLeitura(id, origem);
+  };
+  reg.addEventListener('click', registrar);
+  campo.addEventListener('keydown', e=>{ if(e.key==='Enter'){ e.preventDefault(); registrar(); } });
+  $('lt-finalizar').addEventListener('click', ()=> finalizarLeitura(id, origem));
+}
+
+async function finalizarLeitura(id, origem){
+  const lt = LEITURAS.find(x=>x.id===id);
+  const l = lt && LIVROS.find(x=>x.id===lt.livroId); if(!lt || !l) return;
+  const pag = paginaAtualLeitura(id);
+  let completar = false;
+  if(l.paginas && pag < l.paginas){
+    const pct = Math.floor(pag / l.paginas * 100);
+    const esc = await escolherNoPicker(`<h3>Finalizar leitura</h3>
+      <p class="hint" style="margin-top:0">Você está na página ${pag} de ${l.paginas} (${pct}%).</p>
+      <div class="escolha-lista">
+        <button class="btn btn-outline btn-block" type="button" data-v="manter">Manter página atual (${pag}, ${pct}%)</button>
+        <button class="btn btn-accent btn-block" type="button" data-v="cem">Alterar para 100% (página ${l.paginas})</button>
+        <button class="btn btn-outline btn-block" type="button" data-v="voltar" style="text-align:center">Voltar</button>
+      </div>
+      <p class="hint">“Alterar para 100%” registra também a página ${l.paginas} no histórico.</p>`);
+    if(esc!=='manter' && esc!=='cem') return;
+    completar = esc==='cem';
+  } else if(!await confirmar('Finalizar esta leitura?\n\nO livro continua na sua biblioteca e você poderá iniciar uma nova leitura depois.')) return;
+  const agora = new Date().toISOString();
+  if(completar) await putRecord('progressos', {leituraId:id, pagina:l.paginas, dataHora:agora});
+  await putRecord('leituras', {...lt, status:'finalizada', fim:agora});
+  await reloadAll(); renderCurrent(); abrirLeitura(id, origem);
+}
+
+async function excluirLeitura(id, origem){
+  const lt = LEITURAS.find(x=>x.id===id);
+  const l = lt && LIVROS.find(x=>x.id===lt.livroId); if(!lt || !l) return;
+  const progs = progressosDaLeitura(id), anots = ANOTACOES.filter(a=>a.leituraId===id);
+  const partes = [];
+  if(progs.length) partes.push(`${progs.length} ${progs.length===1?'registro de progresso':'registros de progresso'}`);
+  if(anots.length) partes.push(`${anots.length} ${anots.length===1?'anotação':'anotações'}`);
+  if(!await confirmar(`Excluir esta leitura de "${l.titulo}"?` + (partes.length ? `\n\nTambém serão excluídos: ${partes.join(' e ')}.` : '') + '\n\nO livro e as outras leituras continuam. Não há como desfazer.')) return;
+  for(const p of progs) await deleteRecord('progressos', p.id);
+  for(const a of anots) await deleteRecord('anotacoes', a.id);
+  await deleteRecord('leituras', id);
+  await reloadAll(); renderCurrent();
+  if(origem==='livro') abrirLivro(l.id); else closeSheet();
+}
+
+/* Aba Leituras: leituras em andamento, a mais recentemente lida primeiro */
+function renderLeituras(){
+  const el = document.getElementById('leituras-lista');
+  const atividade = lt=>{ const u = ultimoProgresso(lt.id); return (u && u.dataHora > lt.inicio) ? u.dataHora : lt.inicio; };
+  const lista = LEITURAS.filter(x=>x.status==='andamento')
+    .map(lt=>({lt, l:LIVROS.find(b=>b.id===lt.livroId)})).filter(x=>x.l)
+    .sort((a,b)=> atividade(b.lt).localeCompare(atividade(a.lt)));
+  if(!lista.length){
+    el.innerHTML = '<div class="vazio">Nenhuma leitura em andamento.<br>Abra um livro e toque em “Iniciar leitura”.</div>';
+    return;
+  }
+  el.innerHTML = lista.map(({lt,l})=>{
+    const capa = l.capa ? `<img class="capa" src="${l.capa}" alt="">` : '<div class="capa capa-ph">📕</div>';
+    return `<div class="leit-item" data-lt="${lt.id}">${capa}<div class="corpo"><div class="tit">${escapeHtml(l.titulo)}</div>`
+      + `<div class="meta">${textoProgresso(lt, l)}</div>${barraPct(percentualLeitura(lt, l)) ? `<div style="margin-top:6px">${barraPct(percentualLeitura(lt, l))}</div>` : ''}`
+      + `<div class="meta">Iniciada em ${fmtDataCurta(lt.inicio)}</div></div></div>`;
+  }).join('');
+  el.querySelectorAll('.leit-item').forEach(it=> it.addEventListener('click', ()=> abrirLeitura(Number(it.dataset.lt), 'lista')));
 }
 
 /* ---- Exclusão (avisa dos dados ligados ao livro) ---- */
@@ -1999,7 +2201,7 @@ document.getElementById('btnImportJson').addEventListener('click', async ()=>{
    ============================================================ */
 fillConfiguracoesForm();
 /* ---- PWA: versão, armazenamento persistente e service worker ---- */
-const APP_VERSION = 'v1_05';
+const APP_VERSION = 'v1_06';
 document.getElementById('appVersaoTxt').textContent = APP_VERSION;
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persist().then(ok=>{
