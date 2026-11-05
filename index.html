@@ -442,6 +442,11 @@ header .sub{color:#E6D2D6;}
 .an-card .meta{font-size:12px;color:var(--ink-soft);margin-top:3px;}
 .an-pers{display:flex;flex-wrap:wrap;gap:5px;margin-top:6px;}
 .an-p{background:var(--accent-soft);color:var(--accent);font-size:11.5px;font-weight:700;padding:2px 9px;border-radius:20px;}
+.chip.sem-x{padding-right:11px;}
+.an-sug{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
+.an-sug-i{background:var(--card);color:var(--accent);border:1.5px solid var(--accent);border-radius:20px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer;}
+.an-sug-i.nova{background:var(--accent);color:#fff;}
+.an-men{color:var(--accent);font-weight:700;}
 </style>
 </head>
 <body>
@@ -2020,7 +2025,7 @@ function desenharAnotacoes(id, origem){
     + (pers.length ? `<label>Mostrar</label><select id="an-filtro"><option value="">Todas as anotações</option>${pers.map(p=>`<option value="${p.id}" ${p.id===_anotFiltro?'selected':''}>Sobre ${escapeHtml(p.nome)}</option>`).join('')}</select>` : '')
     + `<div style="margin-top:12px">` + (lista.length ? lista.map(a=>{
         const ids = a.personagemIds||[];
-        return `<div class="an-card" data-an="${a.id}"><div class="an-txt">${escapeHtml(a.texto)}</div>`
+        return `<div class="an-card" data-an="${a.id}"><div class="an-txt">${textoComMencoesHTML(a.texto, ids)}</div>`
           + `<div class="meta">${fmtDataHora(a.dataHora)}${a.pagina!=null ? ` · Página ${a.pagina}` : ''}</div>`
           + (ids.length ? `<div class="an-pers">${ids.map(pid=>`<span class="an-p">${escapeHtml(nomePersonagem(pid))}</span>`).join('')}</div>` : '')
           + `</div>`;
@@ -2085,6 +2090,7 @@ function abrirFormPersonagem(livroId, pid, leituraId, origem){
   openSubSheet(`<h3>${p ? 'Personagem' : 'Nova personagem'}</h3>
     <label>Nome *</label><input type="text" id="pn-nome" value="${escapeHtml(p ? p.nome : '')}" autocomplete="off">
     <label>Comentário</label><textarea id="pn-comentario" placeholder="Quem é, relação com as outras…">${escapeHtml(p ? (p.comentario||'') : '')}</textarea>
+    ${p ? '<p class="hint">Se mudar o nome, as menções @nome nas anotações são atualizadas.</p>' : ''}
     ${p ? `<button class="btn btn-outline btn-block" id="pn-ver" type="button" style="margin-top:12px">Ver anotações desta leitura sobre ${escapeHtml(p.nome)}</button>` : ''}
     <div class="sheet-actions">
       <button class="btn btn-outline" id="pn-cancel" type="button" style="flex:1">Cancelar</button>
@@ -2099,6 +2105,12 @@ function abrirFormPersonagem(livroId, pid, leituraId, origem){
     const {exatos, parecidos} = personagensParecidas(livroId, nome, pid);
     if(exatos.length){ avisar(`Já existe uma personagem chamada “${exatos[0].nome}” neste livro.`); return; }
     if(parecidos.length && !await confirmar(`Já existe uma personagem com nome parecido: “${parecidos[0].nome}”.\n\nSalvar “${nome}” mesmo assim, como outra personagem?`)) return;
+    if(p && nome!==p.nome){   // as menções "@Antigo" nas anotações que a citam acompanham o novo nome
+      for(const an of anotacoesDaPersonagem(pid)){
+        const novoTxt = renomearMencoes(an.texto, p.nome, nome);
+        if(novoTxt!==an.texto) await putRecord('anotacoes', {...an, texto:novoTxt});
+      }
+    }
     await putRecord('personagens', {...(p||{}), livroId, nome, comentario:$('pn-comentario').value.trim()});
     closeSubSheet();
     await reloadAll(); renderCurrent(); atualizarAbasLeitura(leituraId, origem);
@@ -2109,7 +2121,7 @@ function abrirFormPersonagem(livroId, pid, leituraId, origem){
     });
     $('pn-del').addEventListener('click', async ()=>{
       const refs = anotacoesDaPersonagem(pid);
-      const msg = `Excluir a personagem “${p.nome}”?` + (refs.length ? `\n\nEla é citada em ${plural(refs.length,'anotação','anotações')} deste livro. As anotações continuam, mas deixam de citá-la.` : '') + '\n\nNão há como desfazer.';
+      const msg = `Excluir a personagem “${p.nome}”?` + (refs.length ? `\n\nEla é citada em ${plural(refs.length,'anotação','anotações')} deste livro. As anotações continuam e o texto “@${p.nome}” permanece nelas, mas sem vínculo com a personagem.` : '') + '\n\nNão há como desfazer.';
       if(!await confirmar(msg)) return;
       for(const a of refs) await putRecord('anotacoes', {...a, personagemIds:(a.personagemIds||[]).filter(x=>x!==pid)});
       await deleteRecord('personagens', pid);
@@ -2139,15 +2151,61 @@ async function escolherPersonagemParaAnotacao(livroId, jaIds){
   return await criarPersonagemComChecagem(livroId, nome);
 }
 
+/* ---- @menções (v1_09) ----
+   O texto guarda "@Nome" em texto puro; o vínculo real é `personagemIds`. Uma personagem citada no texto com @ é
+   vinculada automaticamente (e deixa de estar vinculada se a menção for apagada); além disso a anotação pode ter
+   personagens vinculadas só pelo botão "+ Personagem" (v1_08), que continuam removíveis pelo ✕. */
+const LETRA = '\\p{L}\\p{N}_';
+function reEscape(s){ return s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'); }
+/* Ids das personagens do livro citadas com @ no texto (nome mais longo primeiro; "@Ana Maria" não conta como "@Ana") */
+function idsMencionados(texto, livroId){
+  let t = texto||'';
+  const ids = [];
+  personagensDoLivro(livroId).slice().sort((a,b)=> b.nome.length - a.nome.length).forEach(p=>{
+    const re = new RegExp(`(?<![${LETRA}])@${reEscape(p.nome)}(?![${LETRA}])`, 'iu');
+    const m = re.exec(t);
+    if(m){ ids.push(p.id); t = t.slice(0, m.index) + ' '.repeat(m[0].length) + t.slice(m.index + m[0].length); }
+  });
+  return ids;
+}
+/* Texto do cartão com as menções vinculadas em destaque */
+function textoComMencoesHTML(texto, ids){
+  const html = escapeHtml(texto||'');
+  const nomes = (ids||[]).map(id=>PERSONAGENS.find(p=>p.id===id)).filter(Boolean).map(p=>escapeHtml(p.nome)).sort((a,b)=>b.length-a.length);
+  if(!nomes.length) return html;
+  const re = new RegExp(`(?<![${LETRA}])@(?:${nomes.map(reEscape).join('|')})(?![${LETRA}])`, 'giu');
+  return html.replace(re, m=>`<span class="an-men">${m}</span>`);
+}
+/* Renomear personagem: acompanha o novo nome nas menções "@Antigo" das anotações que a citam */
+function renomearMencoes(texto, antigo, novo){
+  const re = new RegExp(`(?<![${LETRA}])@${reEscape(antigo)}(?![${LETRA}])`, 'giu');
+  return (texto||'').replace(re, ()=> '@'+novo);
+}
+/* Menção em digitação: "@" no começo do texto ou depois de algo que não é letra/dígito; consulta até o cursor */
+function contextoMencao(ta){
+  const pos = ta.selectionStart;
+  if(pos!==ta.selectionEnd) return null;
+  const antes = ta.value.slice(0, pos);
+  const i = antes.lastIndexOf('@');
+  if(i<0) return null;
+  if(i>0 && new RegExp(`[${LETRA}]`, 'u').test(antes[i-1])) return null;   // e-mail, "a@b"
+  const q = antes.slice(i+1);
+  if(q.includes('\n') || q.length>30) return null;
+  return {pos:i, fim:pos, q};
+}
+
 function abrirFormAnotacao(leituraId, aid, origem){
   const lt = LEITURAS.find(x=>x.id===leituraId), l = lt && LIVROS.find(x=>x.id===lt.livroId); if(!l) return;
   const a = aid ? ANOTACOES.find(x=>x.id===aid) : null;
   if(aid && !a) return;
   const iso0 = a ? a.dataHora : new Date().toISOString();
   const data0 = dataLocalISO(iso0), hora0 = horaLocalISO(iso0);
-  let pids = a ? (a.personagemIds||[]).slice() : [];
+  // vínculos só pelo botão = os que a anotação já tinha e que o texto não cita com @
+  const mencIni = a ? idsMencionados(a.texto, l.id) : [];
+  let pids = a ? (a.personagemIds||[]).filter(x=>!mencIni.includes(x)) : [];
   openSubSheet(`<h3>${a ? 'Editar anotação' : 'Nova anotação'}</h3>
-    <label>Anotação *</label><textarea id="an-texto" style="min-height:110px">${escapeHtml(a ? a.texto : '')}</textarea>
+    <label>Anotação *</label><textarea id="an-texto" style="min-height:110px" placeholder="Digite @ para citar uma personagem">${escapeHtml(a ? a.texto : '')}</textarea>
+    <div class="an-sug" id="an-sug" style="display:none"></div>
     <label>Página</label><input type="number" id="an-pagina" inputmode="numeric" min="0" value="${a && a.pagina!=null ? a.pagina : ''}" placeholder="Opcional (leitura na página ${paginaAtualLeitura(leituraId)})" autocomplete="off">
     <label>Personagens</label>
     <div class="chips" id="an-chips"></div>
@@ -2160,20 +2218,80 @@ function abrirFormAnotacao(leituraId, aid, origem){
     </div>
     ${a ? '<button class="btn btn-danger btn-block" id="an-del" type="button" style="margin-top:10px">Excluir anotação</button>' : ''}`);
   const $ = x=> document.getElementById(x);
-  const chips = ()=>{ $('an-chips').innerHTML = pids.map(pid=>`<span class="chip"><span>${escapeHtml(nomePersonagem(pid))}</span><button type="button" data-rm="${pid}" aria-label="Remover personagem">✕</button></span>`).join(''); };
+  const ta = $('an-texto'), sug = $('an-sug');
+  const mencionados = ()=> idsMencionados(ta.value, l.id);
+  const efetivos = ()=> { const m = mencionados(); return pids.filter(x=>!m.includes(x)).concat(m); };
+  const chips = ()=>{
+    const m = mencionados();
+    $('an-chips').innerHTML = pids.filter(x=>!m.includes(x)).map(pid=>`<span class="chip"><span>${escapeHtml(nomePersonagem(pid))}</span><button type="button" data-rm="${pid}" aria-label="Remover personagem">✕</button></span>`).join('')
+      + m.map(pid=>`<span class="chip sem-x" title="Citada no texto com @"><span>@${escapeHtml(nomePersonagem(pid))}</span></span>`).join('');
+  };
   chips();
+  const sujo = ()=>{ camadaSub.dirty = true; camadaSub.salvando = false; };
   $('an-chips').addEventListener('click', e=>{
     const b = e.target.closest('[data-rm]'); if(!b) return;
-    pids = pids.filter(x=>x!==Number(b.dataset.rm)); chips(); camadaSub.dirty = true; camadaSub.salvando = false;
+    pids = pids.filter(x=>x!==Number(b.dataset.rm)); chips(); sujo();
   });
   $('an-addp').addEventListener('click', async ()=>{
-    const pid = await escolherPersonagemParaAnotacao(l.id, pids);
-    if(pid && !pids.includes(pid)){ pids.push(pid); chips(); camadaSub.dirty = true; camadaSub.salvando = false; }
+    const pid = await escolherPersonagemParaAnotacao(l.id, efetivos());
+    if(pid && !efetivos().includes(pid)){ pids.push(pid); chips(); sujo(); }
     camadaSub.salvando = false;
   });
+
+  /* Autocompletar ao digitar @ */
+  let ignorarPos = null;      // "@" cuja criação o usuário recusou: não volta a oferecer enquanto o texto não mudar de menção
+  let ctxAtual = null;
+  const ocultarSug = ()=>{ sug.style.display = 'none'; sug.innerHTML = ''; ctxAtual = null; };
+  const atualizarSug = ()=>{
+    const ctx = contextoMencao(ta);
+    if(!ctx){ ignorarPos = null; ocultarSug(); return; }
+    if(ctx.pos===ignorarPos){ ocultarSug(); return; }
+    const q = ctx.q, qn = normalizeNome(q), terminaEspaco = /\s$/.test(q);
+    const todas = personagensDoLivro(l.id);
+    let achadas = todas.filter(p=> !qn || normalizeNome(p.nome).includes(qn));
+    achadas.sort((x,y)=> (normalizeNome(y.nome).startsWith(qn) - normalizeNome(x.nome).startsWith(qn)));
+    if(terminaEspaco) achadas = achadas.filter(p=> normalizeNome(p.nome).startsWith(qn+' '));   // "@Capitu ": a menção acabou; só segue sugerindo se há nome maior ("@Ana " → Ana Maria)
+    achadas = achadas.slice(0, 6);
+    const nomeNovo = limpaNome(q);
+    const exato = todas.some(p=> normalizeNome(p.nome)===normalizeNome(nomeNovo));
+    const podeCriar = nomeNovo && !terminaEspaco && !exato;
+    if(!achadas.length && !podeCriar){ ocultarSug(); return; }
+    ctxAtual = ctx;
+    sug.innerHTML = achadas.map(p=>`<button type="button" class="an-sug-i" data-p="${p.id}">@${escapeHtml(p.nome)}</button>`).join('')
+      + (podeCriar ? `<button type="button" class="an-sug-i nova" data-nova="1">+ Cadastrar “${escapeHtml(nomeNovo)}”</button>` : '');
+    sug.style.display = 'flex';
+  };
+  const inserirMencao = (pid, ctx)=>{
+    const nome = nomePersonagem(pid);
+    const v = ta.value;
+    ta.value = v.slice(0, ctx.pos) + '@' + nome + ' ' + v.slice(ctx.fim);
+    const c = ctx.pos + nome.length + 2;
+    ta.focus(); ta.setSelectionRange(c, c);
+    ocultarSug(); chips(); sujo();
+  };
+  ['input','keyup','click'].forEach(ev=> ta.addEventListener(ev, atualizarSug));
+  ta.addEventListener('input', chips);
+  ta.addEventListener('blur', ()=> setTimeout(()=>{ if(document.activeElement!==ta) ocultarSug(); }, 150));
+  sug.addEventListener('mousedown', e=> e.preventDefault());   // tocar na sugestão não tira o foco do campo (teclado fica aberto)
+  sug.addEventListener('click', async e=>{
+    const b = e.target.closest('button'); if(!b || !ctxAtual) return;
+    const ctx = ctxAtual;
+    if(b.dataset.p){ inserirMencao(Number(b.dataset.p), ctx); return; }
+    // nova personagem: pergunta antes de criar; se recusar, o texto digitado fica como está
+    const nome = limpaNome(ctx.q);
+    ocultarSug();
+    if(!await confirmar(`Cadastrar “${nome}” como nova personagem deste livro?\n\nSe não quiser, o texto “@${nome}” fica na anotação, sem criar personagem.`)){
+      ignorarPos = ctx.pos; camadaSub.salvando = false; ta.focus(); return;
+    }
+    await historicoAssentar();   // o diálogo acabou de fechar; a checagem de nome parecido pode abrir um seletor
+    const novo = await criarPersonagemComChecagem(l.id, nome);
+    if(novo==null){ ignorarPos = ctx.pos; camadaSub.salvando = false; ta.focus(); return; }
+    inserirMencao(novo, ctx);
+  });
+
   $('an-cancel').addEventListener('click', ()=> closeSubSheet());
   $('an-save').addEventListener('click', async ()=>{
-    const texto = $('an-texto').value.trim();
+    const texto = ta.value.trim();
     if(!texto){ avisar('Escreva o texto da anotação.'); return; }
     const raw = $('an-pagina').value.trim(); let pagina = null;
     if(raw!==''){
@@ -2190,7 +2308,8 @@ function abrirFormAnotacao(leituraId, aid, origem){
       if(t > Date.now()+60000){ avisar('A anotação não pode estar no futuro.'); return; }
       dataHora = new Date(t).toISOString();
     } else if(!a) dataHora = new Date().toISOString();   // nova e sem mexer: hora exata do salvamento
-    await putRecord('anotacoes', {...(a||{}), leituraId, texto, pagina, dataHora, personagemIds:pids});
+    const personagemIds = idsMencionados(texto, l.id).concat(pids.filter(x=>!idsMencionados(texto, l.id).includes(x)));
+    await putRecord('anotacoes', {...(a||{}), leituraId, texto, pagina, dataHora, personagemIds});
     closeSubSheet();
     await reloadAll(); renderCurrent(); atualizarAbasLeitura(leituraId, origem);
   });
@@ -2200,7 +2319,7 @@ function abrirFormAnotacao(leituraId, aid, origem){
     closeSubSheet();
     await reloadAll(); renderCurrent(); atualizarAbasLeitura(leituraId, origem);
   });
-  if(!a) setTimeout(()=>{ const c = $('an-texto'); if(c) c.focus(); }, 60);
+  if(!a) setTimeout(()=>{ ta.focus(); }, 60);
 }
 
 /* Reabrir leitura finalizada (v1_07): volta a "em andamento", apaga a data de fim; histórico e anotações ficam.
@@ -2610,7 +2729,7 @@ document.getElementById('btnImportJson').addEventListener('click', async ()=>{
    ============================================================ */
 fillConfiguracoesForm();
 /* ---- PWA: versão, armazenamento persistente e service worker ---- */
-const APP_VERSION = 'v1_08';
+const APP_VERSION = 'v1_09';
 document.getElementById('appVersaoTxt').textContent = APP_VERSION;
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persist().then(ok=>{

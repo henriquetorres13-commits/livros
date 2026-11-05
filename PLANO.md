@@ -12,7 +12,7 @@ Uma fase = uma versão = uma sessão (cabe no limite do plano gratuito). A ordem
 | v1_06 | Leituras: iniciar, registrar página (aviso de página menor), finalizar, várias leituras, aba Leituras, % nas listagens (inclui excluir leitura) | publicada |
 | v1_07 | Histórico de progresso: gráfico (com regressões) e lista com editar/excluir discreto; **inclui reabrir leitura finalizada** (pedido do usuário) | publicada |
 | v1_08 | Personagens e anotações (abas da leitura, todas / por personagem, página, data editável) | publicada |
-| v1_09 | `@menções` em anotações (autocompletar, confirmar criação, vínculos reais, exclusão com aviso) | |
+| v1_09 | `@menções` em anotações (autocompletar, confirmar criação, vínculos reais, exclusão com aviso) | feita na branch v1_09 (aguarda validação e "pode publicar") |
 | v1_10 | Preços dos livros (adaptado do Preços: preço, data, local, pago × observado, histórico, gráfico) | |
 | v1_11 | Pesquisa geral, filtros e visões salvas (um único mecanismo; pode precisar de 2 sessões) | |
 | v1_12 | Acabamento: identidade visual, ícones, limpeza de CSS herdado, revisão contra a especificação | |
@@ -20,6 +20,7 @@ Uma fase = uma versão = uma sessão (cabe no limite do plano gratuito). A ordem
 ## Pontos a validar no aparelho do usuário
 
 - v1_06: leituras (iniciar, registrar, finalizar, aba Leituras) ainda a validar no celular.
+- v1_09: digitar @ na anotação (sugestões, tocar para inserir, cadastrar personagem nova com confirmação, recusar mantém o texto), menções destacadas no cartão, renomear personagem atualiza as menções.
 - v1_08: abas Progresso/Anotações/Personagens; criar anotação com página, data editável e personagens (inclusive criando personagem na hora); filtro por personagem; excluir personagem citada.
 - v1_07: gráfico (regressão), lista com toque para editar/excluir e reabrir leitura.
 - v1_04: **validado no celular pelo usuário em 2026-11-04** (busca online por ISBN real funcionou: APIs respondem ao navegador).
