@@ -447,6 +447,16 @@ header .sub{color:#E6D2D6;}
 .an-sug-i{background:var(--card);color:var(--accent);border:1.5px solid var(--accent);border-radius:20px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer;}
 .an-sug-i.nova{background:var(--accent);color:#fff;}
 .an-men{color:var(--accent);font-weight:700;}
+/* Preços dos livros (v1_10) */
+.pr-resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:8px;margin-bottom:10px;}
+.pr-resumo>div{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px 9px;}
+.pr-resumo span{display:block;font-size:11px;color:var(--ink-soft);}
+.pr-resumo b{font-size:13.5px;}
+.pr-linha{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 11px;margin-bottom:6px;cursor:pointer;}
+.pr-linha:active{opacity:.7;}
+.pr-linha .pr-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;}
+.pr-linha .meta{font-size:12px;color:var(--ink-soft);margin-top:2px;}
+.badge-obs{background:var(--paper-alt);color:var(--ink-soft);}
 </style>
 </head>
 <body>
@@ -499,6 +509,7 @@ header .sub{color:#E6D2D6;}
     <button class="btn btn-outline btn-block" id="btnGoInicio" type="button" style="margin-bottom:10px;text-align:left">🏠 Tela de atalhos</button>
     <button class="btn btn-outline btn-block" id="btnGoAutores" type="button" style="margin-bottom:10px;text-align:left">✍️ Autores</button>
     <button class="btn btn-outline btn-block" id="btnGoCategorias" type="button" style="margin-bottom:10px;text-align:left">🏷️ Categorias de livros</button>
+    <button class="btn btn-outline btn-block" id="btnGoLocais" type="button" style="margin-bottom:10px;text-align:left">📍 Locais (onde vi os preços)</button>
     <button class="btn btn-outline btn-block" id="btnGoExportar" type="button" style="margin-bottom:10px;text-align:left">📤 Backup e restauração</button>
     <button class="btn btn-outline btn-block" id="btnGoConfiguracoes" type="button" style="text-align:left">⚙️ Configurações</button>
   </section>
@@ -510,6 +521,15 @@ header .sub{color:#E6D2D6;}
     <p class="hint" style="margin-top:0;margin-bottom:10px">Toque no nome para ver os livros do autor. Autores novos também podem ser criados direto no cadastro do livro.</p>
     <div id="autores-lista"></div>
     <button class="btn btn-accent btn-block" id="btnNovoAutor" type="button">+ Novo autor</button>
+  </section>
+
+  <!-- ================= LOCAIS ================= -->
+  <section class="view" id="view-locais">
+    <button class="btn btn-outline btn-sm" id="btnVoltarMaisLocais" type="button" style="margin-bottom:12px">← Voltar</button>
+    <h2 class="section-title">Locais</h2>
+    <p class="hint" style="margin-top:0;margin-bottom:10px">Lojas, livrarias ou sites onde você viu ou pagou o preço de um livro. Toque num local para editar.</p>
+    <div id="locais-lista"></div>
+    <button class="btn btn-accent btn-block" id="btnNovoLocal" type="button">+ Novo local</button>
   </section>
 
   <!-- ================= CATEGORIAS DE LIVROS ================= -->
@@ -1119,8 +1139,8 @@ document.body.addEventListener('click', (e)=>{
    Barra inferior (4 áreas + Mais) = telas RAIZ: zeram a pilha. Atalhos dentro das telas empilham.
    ============================================================ */
 const TITULOS = {inicio:'Atalhos', biblioteca:'Biblioteca', desejos:'Lista de desejos', leituras:'Leituras', pesquisa:'Pesquisa',
-  mais:'Mais', exportar:'Backup', configuracoes:'Configurações', categorias:'Categorias', autores:'Autores'};
-const VIEWS_DO_MAIS = ['inicio','exportar','configuracoes','categorias','autores'];
+  mais:'Mais', exportar:'Backup', configuracoes:'Configurações', categorias:'Categorias', autores:'Autores', locais:'Locais'};
+const VIEWS_DO_MAIS = ['inicio','exportar','configuracoes','categorias','autores','locais'];
 let viewAtual = null;
 let currentTab = null;
 function zerarPilhaTelas(){
@@ -1170,6 +1190,7 @@ function renderCurrent(){
   if(currentTab==='leituras') renderLeituras();
   if(currentTab==='categorias') renderCategorias();
   if(currentTab==='autores') renderAutores();
+  if(currentTab==='locais') renderLocais();
   if(currentTab==='exportar') renderBackupInfo();
 }
 
@@ -1185,6 +1206,8 @@ document.getElementById('btnGoCategorias').addEventListener('click', ()=> switch
 document.getElementById('btnVoltarMaisCats').addEventListener('click', ()=> switchView('mais', {raiz:true}));
 document.getElementById('btnGoAutores').addEventListener('click', ()=> switchView('autores', {raiz:true}));
 document.getElementById('btnVoltarMaisAutores').addEventListener('click', ()=> switchView('mais', {raiz:true}));
+document.getElementById('btnGoLocais').addEventListener('click', ()=> switchView('locais', {raiz:true}));
+document.getElementById('btnVoltarMaisLocais').addEventListener('click', ()=> switchView('mais', {raiz:true}));
 document.getElementById('btnGoConfiguracoes').addEventListener('click', ()=> switchView('configuracoes', {raiz:true}));
 document.getElementById('btnVoltarMaisExportar').addEventListener('click', ()=> switchView('mais', {raiz:true}));
 document.getElementById('btnVoltarMaisConfig').addEventListener('click', ()=> switchView('mais', {raiz:true}));
@@ -1566,6 +1589,7 @@ function abrirLivro(id){
       ${kv('Meus comentários', l.comentarios)}
     </div>
     ${minhasLeiturasHTML(l)}
+    ${precosSecaoHTML(l)}
   </div>
   ${l.situacao==='desejo' ? '<button class="btn btn-accent btn-block" id="lv-comprei" type="button" style="margin-top:14px">✓ Marcar como comprado</button>' : ''}
   <div class="sheet-actions">
@@ -1577,6 +1601,7 @@ function abrirLivro(id){
   document.getElementById('lv-edit').addEventListener('click', ()=> abrirFormLivro(id));
   document.getElementById('lv-del').addEventListener('click', ()=> excluirLivro(id));
   document.getElementById('lv-iniciar').addEventListener('click', ()=> iniciarLeitura(id));
+  ligarPrecos(id);
   document.querySelectorAll('#lv-leituras [data-lt]').forEach(el=> el.addEventListener('click', ()=> abrirLeitura(Number(el.dataset.lt), 'livro')));
   const bc = document.getElementById('lv-comprei');
   if(bc) bc.addEventListener('click', async ()=>{
@@ -1974,6 +1999,183 @@ async function excluirLeitura(id, origem){
   await reloadAll(); renderCurrent();
   if(origem==='livro') abrirLivro(l.id); else closeSheet();
 }
+
+/* ============================================================
+   PREÇOS DOS LIVROS (v1_10) — adaptado do módulo de preços do app Preços
+   preco = {livroId, preco (R$), data (AAAA-MM-DD), localId|null, comprou (true = paguei; false = só observei), obs}
+   local = {nome, obs} (mesmo store e formulário do Preços). Sem quantidade de referência/conversões (livro é unitário).
+   ============================================================ */
+let _precoModo = 'lista', _precoLivro = null;
+function fmtMoney(v){ return 'R$ ' + Number(v).toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function precosDoLivro(livroId){   // mais recente primeiro (data, depois id)
+  return PRECOS.filter(p=>p.livroId===livroId).sort((a,b)=> (b.data||'').localeCompare(a.data||'') || b.id-a.id);
+}
+function nomeLocal(id){ const x = LOCAIS.find(l=>l.id===id); return x ? x.nome : ''; }
+
+function graficoPrecosSVG(listaDesc){
+  const pts = listaDesc.slice().reverse();   // cronológico
+  const W=340, H=190, mL=62, mR=12, mT=12, mB=26, iw=W-mL-mR, ih=H-mT-mB;
+  const ts = pts.map(p=> new Date(p.data+'T12:00:00').getTime());
+  const t0 = Math.min(...ts), t1 = Math.max(...ts);
+  let vmin = Math.min(...pts.map(p=>p.preco)), vmax = Math.max(...pts.map(p=>p.preco));
+  if(vmax-vmin < 0.01){ vmin = vmin*0.9; vmax = vmax*1.1; }
+  const X = t=> (t1===t0 ? mL+iw/2 : mL + (t-t0)/(t1-t0)*iw).toFixed(1);
+  const Y = v=> (mT + ih - (v-vmin)/(vmax-vmin)*ih).toFixed(1);
+  let s = `<svg class="hist-grafico" viewBox="0 0 ${W} ${H}" role="img" aria-label="Gráfico do preço do livro ao longo do tempo">`;
+  [vmin, (vmin+vmax)/2, vmax].forEach(v=>{
+    const y = Y(v);
+    s += `<line x1="${mL}" x2="${W-mR}" y1="${y}" y2="${y}" style="stroke:var(--line)" stroke-width="1"/>`
+       + `<text x="${mL-5}" y="${(+y+3.5).toFixed(1)}" text-anchor="end">${fmtMoney(v)}</text>`;
+  });
+  s += `<text x="${mL}" y="${H-8}" text-anchor="start">${fmtDateBR(pts[0].data).slice(0,5)}</text>`
+     + (t1!==t0 ? `<text x="${W-mR}" y="${H-8}" text-anchor="end">${fmtDateBR(pts[pts.length-1].data).slice(0,5)}</text>` : '');
+  for(let i=1;i<pts.length;i++){
+    s += `<line x1="${X(ts[i-1])}" y1="${Y(pts[i-1].preco)}" x2="${X(ts[i])}" y2="${Y(pts[i].preco)}" style="stroke:var(--accent)" stroke-width="2" stroke-linecap="round"/>`;
+  }
+  pts.forEach((p,i)=>{
+    s += p.comprou
+      ? `<circle cx="${X(ts[i])}" cy="${Y(p.preco)}" r="4.5" style="fill:var(--accent)"/>`
+      : `<circle cx="${X(ts[i])}" cy="${Y(p.preco)}" r="4.5" style="fill:var(--card);stroke:var(--accent)" stroke-width="2.2"/>`;
+  });
+  return s + '</svg>';
+}
+
+function precosInnerHTML(l){
+  const lista = precosDoLivro(l.id);
+  let corpo = '';
+  if(lista.length){
+    const valores = lista.map(p=>p.preco);
+    const media = valores.reduce((a,b)=>a+b,0) / valores.length;
+    const pago = lista.find(p=>p.comprou);
+    corpo += `<div class="pr-resumo"><div><span>Último</span><b>${fmtMoney(lista[0].preco)}</b></div>`
+      + `<div><span>Menor</span><b>${fmtMoney(Math.min(...valores))}</b></div>`
+      + `<div><span>Média</span><b>${fmtMoney(media)}</b></div>`
+      + (pago ? `<div><span>Paguei</span><b>${fmtMoney(pago.preco)}</b></div>` : '') + `</div>`
+      + `<div class="hist-seg"><button type="button" data-m="lista" class="${_precoModo==='lista'?'active':''}">Lista</button><button type="button" data-m="grafico" class="${_precoModo==='grafico'?'active':''}">Gráfico</button></div>`;
+    corpo += _precoModo==='grafico'
+      ? graficoPrecosSVG(lista) + '<p class="hint" style="margin-top:4px">● paguei · ○ só observei</p>'
+      : lista.map(p=>{
+          const loc = nomeLocal(p.localId);
+          return `<div class="pr-linha" data-pr="${p.id}"><div class="pr-topo"><b class="mono">${fmtMoney(p.preco)}</b>`
+            + `<span class="badge ${p.comprou ? 'badge-good' : 'badge-obs'}">${p.comprou ? 'Paguei' : 'Observado'}</span></div>`
+            + `<div class="meta">${fmtDateBR(p.data)}${loc ? ' · ' + escapeHtml(loc) : ''}</div>`
+            + (p.obs ? `<div class="meta" style="white-space:pre-wrap">${escapeHtml(p.obs)}</div>` : '') + `</div>`;
+        }).join('');
+  } else corpo = '<p class="hint" style="margin-top:0">Nenhum preço registrado ainda.</p>';
+  return `<div class="det-sec-t">Preços</div>${corpo}<button class="btn btn-outline btn-block" id="pr-novo" type="button" style="margin-top:8px">+ Registrar preço</button>`;
+}
+function precosSecaoHTML(l){
+  if(_precoLivro !== l.id){ _precoLivro = l.id; _precoModo = 'lista'; }
+  return `<div class="det-sec" id="lv-precos">${precosInnerHTML(l)}</div>`;
+}
+function desenharPrecos(livroId){
+  const l = LIVROS.find(x=>x.id===livroId), el = document.getElementById('lv-precos');
+  if(!l || !el) return;
+  el.innerHTML = precosInnerHTML(l);
+  ligarPrecos(livroId);
+}
+function ligarPrecos(livroId){
+  const el = document.getElementById('lv-precos'); if(!el) return;
+  el.querySelectorAll('.hist-seg button').forEach(b=> b.addEventListener('click', ()=>{ _precoModo = b.dataset.m; desenharPrecos(livroId); }));
+  el.querySelectorAll('[data-pr]').forEach(c=> c.addEventListener('click', ()=> abrirFormPreco(livroId, Number(c.dataset.pr))));
+  document.getElementById('pr-novo').addEventListener('click', ()=> abrirFormPreco(livroId, null));
+}
+
+function abrirFormPreco(livroId, prId){
+  const l = LIVROS.find(x=>x.id===livroId); if(!l) return;
+  const p = prId ? PRECOS.find(x=>x.id===prId) : null;
+  if(prId && !p) return;
+  const ult = precosDoLivro(livroId)[0];
+  const localIni = p ? p.localId : (ult ? ult.localId : null);
+  openSubSheet(`<h3>${p ? 'Editar preço' : 'Novo preço'}</h3>
+    <label>Preço *</label><input type="text" id="pr-preco" class="mono" placeholder="0,00">
+    <label>Data em que verificou</label><input type="date" id="pr-data" value="${p ? p.data : todayLocal()}">
+    <label>Onde verificou</label>
+    <div style="display:flex;gap:8px">
+      <select id="pr-local" style="flex:1"><option value="">${LOCAIS.length ? 'Não informado' : 'Nenhum local cadastrado ainda'}</option>${optionsHTML(LOCAIS, localIni==null ? undefined : localIni)}</select>
+      <button class="btn btn-outline btn-sm" id="pr-local-add" type="button" style="flex:none">+ Novo</button>
+    </div>
+    <div class="check-row"><input type="checkbox" id="pr-comprou" ${p && p.comprou ? 'checked' : ''}><label style="margin:0" for="pr-comprou">Comprei por este preço</label></div>
+    <p class="hint" style="margin-top:2px">Desmarcado = só observei o preço (loja, site…).</p>
+    <label>Observação</label><textarea id="pr-obs" placeholder="Observações sobre este preço">${escapeHtml(p ? (p.obs||'') : '')}</textarea>
+    <div class="sheet-actions">
+      <button class="btn btn-outline" id="pr-cancel" type="button" style="flex:1">Cancelar</button>
+      <button class="btn btn-accent" id="pr-save" type="button" style="flex:1">Salvar</button>
+    </div>
+    ${p ? '<button class="btn btn-danger btn-block" id="pr-del" type="button" style="margin-top:10px">Excluir preço</button>' : ''}`);
+  const $ = x=> document.getElementById(x);
+  attachMoneyMask($('pr-preco'), p ? p.preco : null);
+  $('pr-cancel').addEventListener('click', ()=> closeSubSheet());
+  $('pr-local-add').addEventListener('click', async ()=>{
+    const r = await perguntar('Nome do local:', '');
+    camadaSub.salvando = false;
+    const nome = limpaNome(r);
+    if(!nome) return;
+    let loc = LOCAIS.find(x=> normalizeNome(x.nome)===normalizeNome(nome));
+    if(!loc){ const id = await putRecord('locais', {nome, obs:''}); await reloadAll(); loc = LOCAIS.find(x=>x.id===id); }
+    $('pr-local').innerHTML = `<option value="">Não informado</option>` + optionsHTML(LOCAIS, loc.id);
+    camadaSub.dirty = true;
+  });
+  $('pr-save').addEventListener('click', async ()=>{
+    const preco = getMoneyValue($('pr-preco')), data = $('pr-data').value;
+    if(!preco || preco<=0){ avisar('Informe o preço.'); return; }
+    if(!data){ avisar('Informe a data.'); return; }
+    const lv = $('pr-local').value;
+    await putRecord('precos', {...(p||{}), livroId, preco, data, localId: lv ? Number(lv) : null, comprou: $('pr-comprou').checked, obs: $('pr-obs').value.trim()});
+    closeSubSheet();
+    await reloadAll(); renderCurrent(); desenharPrecos(livroId);
+  });
+  if(p) $('pr-del').addEventListener('click', async ()=>{
+    if(!await confirmar(`Excluir o preço de ${fmtMoney(p.preco)} (${fmtDateBR(p.data)})?\n\nNão há como desfazer.`)) return;
+    await deleteRecord('precos', prId);
+    closeSubSheet();
+    await reloadAll(); renderCurrent(); desenharPrecos(livroId);
+  });
+  if(!p) setTimeout(()=>{ const c = $('pr-preco'); if(c) c.focus(); }, 60);
+}
+
+/* ---- Mais → Locais (lojas/livrarias/sites): mesma ideia da tela de locais do Preços ---- */
+function renderLocais(){
+  const el = document.getElementById('locais-lista');
+  if(!LOCAIS.length){ el.innerHTML = '<div class="vazio" style="margin-bottom:12px">Nenhum local ainda.<br>Locais também podem ser criados direto ao registrar um preço.</div>'; return; }
+  el.innerHTML = LOCAIS.map(x=>{
+    const n = PRECOS.filter(p=>p.localId===x.id).length;
+    return `<div class="cat-bloco" data-loc="${x.id}" style="cursor:pointer"><div class="cat-linha"><span class="nome">📍 ${escapeHtml(x.nome)} <small>(${n} ${n===1?'preço':'preços'})</small></span></div>`
+      + (x.obs ? `<div class="meta" style="margin-top:4px;white-space:pre-wrap">${escapeHtml(x.obs)}</div>` : '') + `</div>`;
+  }).join('');
+  el.querySelectorAll('[data-loc]').forEach(c=> c.addEventListener('click', ()=> abrirFormLocal(Number(c.dataset.loc))));
+}
+function abrirFormLocal(id){
+  const x = id ? LOCAIS.find(l=>l.id===id) : null;
+  if(id && !x) return;
+  openSheet(`<h3>${x ? 'Editar local' : 'Novo local'}</h3>
+    <label>Nome *</label><input type="text" id="lc-nome" value="${escapeHtml(x ? x.nome : '')}" placeholder="Ex: Livraria da Vila" autocomplete="off">
+    <label>Observação</label><textarea id="lc-obs" placeholder="Endereço, site, observações">${escapeHtml(x ? (x.obs||'') : '')}</textarea>
+    <div class="sheet-actions">
+      <button class="btn btn-outline" id="lc-cancel" type="button" style="flex:1">Cancelar</button>
+      <button class="btn btn-accent" id="lc-save" type="button" style="flex:1">Salvar</button>
+    </div>
+    ${x ? '<button class="btn btn-danger btn-block" id="lc-del" type="button" style="margin-top:10px">Excluir local</button>' : ''}`);
+  const $ = v=> document.getElementById(v);
+  $('lc-cancel').addEventListener('click', ()=> closeSheet());
+  $('lc-save').addEventListener('click', async ()=>{
+    const nome = limpaNome($('lc-nome').value);
+    if(!nome){ avisar('Informe o nome do local.'); return; }
+    const igual = LOCAIS.find(l=> l.id!==id && normalizeNome(l.nome)===normalizeNome(nome));
+    if(igual){ avisar(`Já existe um local chamado “${igual.nome}”.`); return; }
+    await putRecord('locais', {...(x||{}), nome, obs: $('lc-obs').value.trim()});
+    closeSheet(); await reloadAll(); renderCurrent();
+  });
+  if(x) $('lc-del').addEventListener('click', async ()=>{
+    const usados = PRECOS.filter(p=>p.localId===id);
+    if(!await confirmar(`Excluir o local “${x.nome}”?` + (usados.length ? `\n\n${plural(usados.length,'preço registrado ficará','preços registrados ficarão')} sem local (os preços não são excluídos).` : '') + '\n\nNão há como desfazer.')) return;
+    for(const p of usados) await putRecord('precos', {...p, localId:null});
+    await deleteRecord('locais', id);
+    closeSheet(); await reloadAll(); renderCurrent();
+  });
+  if(!x) setTimeout(()=>{ const c = $('lc-nome'); if(c) c.focus(); }, 60);
+}
+document.getElementById('btnNovoLocal').addEventListener('click', ()=> abrirFormLocal(null));
 
 /* ============================================================
    ANOTAÇÕES E PERSONAGENS (v1_08): abas da tela da leitura
@@ -2729,7 +2931,7 @@ document.getElementById('btnImportJson').addEventListener('click', async ()=>{
    ============================================================ */
 fillConfiguracoesForm();
 /* ---- PWA: versão, armazenamento persistente e service worker ---- */
-const APP_VERSION = 'v1_09';
+const APP_VERSION = 'v1_10';
 document.getElementById('appVersaoTxt').textContent = APP_VERSION;
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persist().then(ok=>{

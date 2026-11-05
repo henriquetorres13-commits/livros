@@ -1,6 +1,6 @@
 # ARQUITETURA.md — App "Livros"
 
-Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_09 em 2026-11-05; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
+Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_10 em 2026-11-05; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
 
 O escopo funcional está em `ESPECIFICACAO.md`; a ordem de entrega e o andamento estão em `PLANO.md`.
 
@@ -65,8 +65,8 @@ Todos os stores: `{keyPath:'id', autoIncrement:true}`. Acesso: `getAll`, `putRec
 | `progressos` | `PROGRESSOS` | `leituraId`, `pagina`, `dataHora` (ISO/UTC; preserva histórico, aceita regressão) |
 | `anotacoes` | `ANOTACOES` | `leituraId`, `texto`, `dataHora` (ISO/UTC, editável), `pagina` (número ou `null`), `personagemIds[]` (vínculos reais; v1_08) |
 | `personagens` | `PERSONAGENS` | `livroId`, `nome`, `comentario` (compartilhadas entre as leituras do livro; v1_08) |
-| `precos` | `PRECOS` | `livroId`, preço, data, `localId`, `comprou` (pago × observado) |
-| `locais` | `LOCAIS` | lojas/livrarias |
+| `precos` | `PRECOS` | `livroId`, `preco` (R$, número), `data` (AAAA-MM-DD), `localId` (ou `null`), `comprou` (`true` = paguei; `false` = só observei), `obs` (v1_10) |
+| `locais` | `LOCAIS` | `nome`, `obs` (lojas, livrarias, sites; v1_10; ordenados por nome) |
 | `visoes` | `VISOES` | visões e combinações de filtros salvas (um único mecanismo), com `ordem` |
 
 Os campos acima são o **desenho previsto**; cada versão que usar um store confirma/ajusta o esquema aqui. A situação "Lido" **não** é campo do livro: é derivada de existir leitura finalizada.
@@ -80,7 +80,7 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 - **Pilha única `navStack`** (telas + modais). O botão voltar do celular desempilha; sem nada empilhado, pergunta se quer sair do app.
 - Camadas de sheet (`criarCamada`): principal (`openSheet`), sub (`openSubSheet`), sub2 (`openSub2Sheet`); têm `dirty`/`salvando`/`confirmarDescarte` (sair de edição com alterações pede confirmação). Seletor sobreposto `pickerOverlay` (z-index 65): `escolherNoPicker(html)` mostra botões com `data-v="valor"` e devolve o valor tocado, ou `null` se o usuário voltar/tocar fora (entra na `navStack` como modal; o voltar do celular fecha só ele). Usado nas escolhas de autor parecido e de ISBN repetido.
 - **Só empilha** por atalhos dentro das telas. Barra inferior e itens do Mais são **raiz** e zeram a pilha: `switchView(name, {raiz:true})`.
-- Barra inferior: Biblioteca, Desejos, Leituras, Pesquisa, Mais. Em Mais: Tela de atalhos, Categorias de livros, Backup e restauração, Configurações. O botão flutuante `+` (`fabAdd`) aparece só em Biblioteca e Desejos. `VIEWS_DO_MAIS` lista as telas que acendem a aba Mais.
+- Barra inferior: Biblioteca, Desejos, Leituras, Pesquisa, Mais. Em Mais: Tela de atalhos, Autores, Categorias de livros, Locais, Backup e restauração, Configurações. O botão flutuante `+` (`fabAdd`) aparece só em Biblioteca e Desejos. `VIEWS_DO_MAIS` lista as telas que acendem a aba Mais.
 - Página inicial configurável: Leituras (`view-leituras`) ou Atalhos (`view-inicio`).
 - `renderCurrent()` é o ponto único de redesenho; cada tela nova ganha seu `render*()` chamado ali.
 - Diálogos: `avisar(msg)`, `confirmar(msg)` → boolean, `perguntar(msg, valor)` → texto|null.
@@ -162,6 +162,16 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 - **Renomear personagem** (`renomearMencoes`): as menções `@Antigo` nas anotações que a citam passam a `@Novo` (o formulário avisa). **Excluir personagem:** as anotações ficam, o `@Nome` permanece no texto sem vínculo, e o aviso de exclusão diz isso.
 - Sem mudança de esquema (`DB_VERSION` segue 1); o backup genérico já cobre tudo (o texto e `personagemIds` são os mesmos campos da v1_08).
 
+## 7i. Preços dos livros e Locais (v1_10)
+
+- **Seção "Preços" no detalhe do livro** (`precosSecaoHTML`/`precosInnerHTML`, container `#lv-precos`, redesenhado sozinho por `desenharPrecos(livroId)` sem reabrir o detalhe): vale para qualquer situação do livro (inclusive desejo). Resumo em quatro caixas (**Último**, **Menor**, **Média** e, se houver, **Paguei** = o preço pago mais recente), alternância **Lista** (padrão; reinicia a cada livro, `_precoModo`) / **Gráfico**, e botão "+ Registrar preço".
+- **Lista:** mais recente primeiro (data, depois id); valor, selo **Paguei** (`comprou:true`) ou **Observado**, data, local e observação. Tocar abre a edição.
+- **Gráfico** (`graficoPrecosSVG`, SVG inline como o do histórico de progresso): tempo × valor, ponto cheio = paguei, ponto vazado = só observei, rótulos de menor/meio/maior valor e primeira/última data.
+- **Formulário** (`abrirFormPreco`, sub-sheet, ids `pr-*`, `pr-save` ativa o aviso de descarte): preço (`attachMoneyMask`, obrigatório > 0), data (padrão hoje), local (select + "+ Novo": pergunta o nome; nome igual, sem acento/caixa, reaproveita o existente; um preço novo já vem com o último local usado), "Comprei por este preço" (desmarcado por padrão = só observei), observação, excluir com `confirmar`.
+- **Mais → Locais** (`view-locais`, `renderLocais`, `abrirFormLocal`): lista com a contagem de preços de cada local; criar/editar (nome obrigatório, observação); nome repetido é recusado; **excluir** avisa quantos preços ficam sem local (os preços não são excluídos, `localId` vai a `null`).
+- **Adaptado do Preços** (copiado/simplificado): campos `preco`/`data`/`localId`/`comprou`/`obs`, máscara de dinheiro, "Comprei", locais, formato do formulário. **Não trazido** (não faz sentido para livro): quantidade de referência/conversões, alerta de "bom preço", série por local no gráfico, importação CSV de preços, "repetir preço". O gráfico do Preços (canvas com agrupamento por dia/semana/mês e várias séries) não foi copiado: usa-se o SVG simples acima.
+- Sem mudança de esquema (`DB_VERSION` segue 1; os stores `precos` e `locais` já existiam e o backup genérico os leva, testado ida e volta). Excluir livro já apagava os preços dele desde a v1_02.
+
 ## 8. Backup (reaproveitado do Preços, adaptado)
 
 - Arquivo `{app:'livros', versao:1, exportadoEm, stores, configuracoes}`; nome `livros_backup_AAAA-MM-DD_HHhMM.json`.
@@ -180,7 +190,7 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 ## 10. Reaproveitado do Preços × novo
 
 - Reaproveitado (copiado): CSS base, máscaras de valor e quantidade, diálogos, pilha de navegação e camadas, lightbox, `resizeImage`, SW, estrutura do backup, tema.
-- Adaptar nas fases seguintes: módulo de preços (sem quantidade de referência/conversões), gráfico em canvas (progresso de leitura), filtros "+ Filtros".
+- Adaptado: módulo de preços (v1_10, ver 7i; sem quantidade de referência/conversões). Adaptar na fase seguinte: filtros "+ Filtros" e visões salvas (v1_11).
 - Novo: scanner de código de barras (v1_05), busca por ISBN, leituras/progresso, anotações com `@personagem`, visões salvas, alerta de backup.
 
 ## 11. Armadilhas conhecidas
