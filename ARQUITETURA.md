@@ -1,6 +1,6 @@
 # ARQUITETURA.md — App "Livros"
 
-Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_10 em 2026-11-05; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
+Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_11 em 2026-11-05; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
 
 O escopo funcional está em `ESPECIFICACAO.md`; a ordem de entrega e o andamento estão em `PLANO.md`.
 
@@ -67,7 +67,7 @@ Todos os stores: `{keyPath:'id', autoIncrement:true}`. Acesso: `getAll`, `putRec
 | `personagens` | `PERSONAGENS` | `livroId`, `nome`, `comentario` (compartilhadas entre as leituras do livro; v1_08) |
 | `precos` | `PRECOS` | `livroId`, `preco` (R$, número), `data` (AAAA-MM-DD), `localId` (ou `null`), `comprou` (`true` = paguei; `false` = só observei), `obs` (v1_10) |
 | `locais` | `LOCAIS` | `nome`, `obs` (lojas, livrarias, sites; v1_10; ordenados por nome) |
-| `visoes` | `VISOES` | visões e combinações de filtros salvas (um único mecanismo), com `ordem` |
+| `visoes` | `VISOES` | `nome`, `ordem` (1..n sem buracos), `filtros` (ver 7j), `original` (`'meus'`\|`'desejos'`\|`'lidos'` nas 3 visões originais, senão `null`); v1_11 |
 
 Os campos acima são o **desenho previsto**; cada versão que usar um store confirma/ajusta o esquema aqui. A situação "Lido" **não** é campo do livro: é derivada de existir leitura finalizada.
 
@@ -80,7 +80,7 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 - **Pilha única `navStack`** (telas + modais). O botão voltar do celular desempilha; sem nada empilhado, pergunta se quer sair do app.
 - Camadas de sheet (`criarCamada`): principal (`openSheet`), sub (`openSubSheet`), sub2 (`openSub2Sheet`); têm `dirty`/`salvando`/`confirmarDescarte` (sair de edição com alterações pede confirmação). Seletor sobreposto `pickerOverlay` (z-index 65): `escolherNoPicker(html)` mostra botões com `data-v="valor"` e devolve o valor tocado, ou `null` se o usuário voltar/tocar fora (entra na `navStack` como modal; o voltar do celular fecha só ele). Usado nas escolhas de autor parecido e de ISBN repetido.
 - **Só empilha** por atalhos dentro das telas. Barra inferior e itens do Mais são **raiz** e zeram a pilha: `switchView(name, {raiz:true})`.
-- Barra inferior: Biblioteca, Desejos, Leituras, Pesquisa, Mais. Em Mais: Tela de atalhos, Autores, Categorias de livros, Locais, Backup e restauração, Configurações. O botão flutuante `+` (`fabAdd`) aparece só em Biblioteca e Desejos. `VIEWS_DO_MAIS` lista as telas que acendem a aba Mais.
+- Barra inferior: Biblioteca, Desejos, Leituras, Pesquisa, Mais. Em Mais: Tela de atalhos, Autores, Visões e filtros salvos, Categorias de livros, Locais, Backup e restauração, Configurações. O botão flutuante `+` (`fabAdd`) aparece só em Biblioteca e Desejos. `VIEWS_DO_MAIS` lista as telas que acendem a aba Mais.
 - Página inicial configurável: Leituras (`view-leituras`) ou Atalhos (`view-inicio`).
 - `renderCurrent()` é o ponto único de redesenho; cada tela nova ganha seu `render*()` chamado ali.
 - Diálogos: `avisar(msg)`, `confirmar(msg)` → boolean, `perguntar(msg, valor)` → texto|null.
@@ -172,6 +172,16 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 - **Adaptado do Preços** (copiado/simplificado): campos `preco`/`data`/`localId`/`comprou`/`obs`, máscara de dinheiro, "Comprei", locais, formato do formulário. **Não trazido** (não faz sentido para livro): quantidade de referência/conversões, alerta de "bom preço", série por local no gráfico, importação CSV de preços, "repetir preço". O gráfico do Preços (canvas com agrupamento por dia/semana/mês e várias séries) não foi copiado: usa-se o SVG simples acima.
 - Sem mudança de esquema (`DB_VERSION` segue 1; os stores `precos` e `locais` já existiam e o backup genérico os leva, testado ida e volta). Excluir livro já apagava os preços dele desde a v1_02.
 
+## 7j. Pesquisa, filtros e visões salvas (v1_11)
+
+- **Um único mecanismo:** o *filtro* `{sit:[], leitura:'', categoriaId, subcategoriaId, autorId}` é montado na aba Pesquisa; uma **visão** é só um filtro com nome e ordem (store `visoes`). O **texto da pesquisa não faz parte da visão** (`_pqTexto`). `filtroNormal(f)` valida e **descarta referências que não existem mais** (categoria/autor excluídos): a visão continua funcionando, sem esse critério. `filtroIgual`, `filtroContagem`, `descreverFiltro` completam o conjunto.
+- **Pesquisa geral** (`livrosPesquisa`): título, subtítulo, autores e personagens do livro; sem acento/caixa (`semAcento`); várias palavras = todas precisam aparecer (em qualquer um desses campos do mesmo livro). Resultados por título, com layout grade/lista compartilhado (`layoutTela`).
+- **Filtros** (painel "⚙ Filtros (n)", recolhido por padrão): Situação (Próprio/Emprestado/Desejo, várias = "ou"), Leitura (Qualquer / Lido = tem leitura finalizada / Em andamento / Não lido = nenhuma leitura finalizada), Categoria, Subcategoria (só aparece com categoria escolhida; trocar a categoria zera a subcategoria) e Autor. Tudo combina em "e".
+- **Visões na Pesquisa:** chips no topo; tocar aplica o filtro (mantém o texto digitado); tocar na ativa desliga. "💾 Salvar como visão" só aparece com filtro ativo que ainda não é igual a uma visão existente (nome repetido, sem acento/caixa, é recusado); "↻ Atualizar “X”" aparece quando a visão aplicada foi alterada (pede `confirmar` mostrando antes/depois).
+- **Administração** em Mais → Visões e filtros salvos (`view-visoes`, `renderVisoes`): usar (abre a Pesquisa com o filtro), ▲▼ reordenar (`moverVisao` regrava `ordem` 1..n), renomear, excluir com `confirmar` (inclusive as originais) e "Restaurar visões originais" (recria as que faltam no fim e devolve nome e filtros originais às que existem; as outras não mudam).
+- **Visões originais** (`VISOES_ORIGINAIS`): Meus livros (próprio ou emprestado), Lista de desejos, Lidos. `semearVisoes()` cria-as uma única vez (chave `livros_visoes_semeadas`, entra no backup) e só se não houver nenhuma visão; excluí-las não as recria sozinho.
+- Biblioteca e Desejos continuam como telas fixas (não dependem das visões). Sem mudança de esquema (`DB_VERSION` segue 1; o store `visoes` já existia e o backup genérico o leva, testado ida e volta; backup antigo sem `visoes` restaura sem erro).
+
 ## 8. Backup (reaproveitado do Preços, adaptado)
 
 - Arquivo `{app:'livros', versao:1, exportadoEm, stores, configuracoes}`; nome `livros_backup_AAAA-MM-DD_HHhMM.json`.
@@ -190,7 +200,7 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 ## 10. Reaproveitado do Preços × novo
 
 - Reaproveitado (copiado): CSS base, máscaras de valor e quantidade, diálogos, pilha de navegação e camadas, lightbox, `resizeImage`, SW, estrutura do backup, tema.
-- Adaptado: módulo de preços (v1_10, ver 7i; sem quantidade de referência/conversões). Adaptar na fase seguinte: filtros "+ Filtros" e visões salvas (v1_11).
+- Adaptado: módulo de preços (v1_10, ver 7i; sem quantidade de referência/conversões). Filtros e visões salvas (v1_11, ver 7j) foram feitos do zero, num único mecanismo.
 - Novo: scanner de código de barras (v1_05), busca por ISBN, leituras/progresso, anotações com `@personagem`, visões salvas, alerta de backup.
 
 ## 11. Armadilhas conhecidas

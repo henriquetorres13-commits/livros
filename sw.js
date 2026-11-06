@@ -1,5 +1,5 @@
 /* Service worker do Livros — mude CACHE a cada versão nova do app */
-const CACHE = 'livros-v1_10';
+const CACHE = 'livros-v1_11';
 const ARQUIVOS = ['./','./index.html','./manifest.webmanifest','./icon-192.png','./icon-512.png','./icon-maskable-512.png'];
 
 self.addEventListener('install', e=>{

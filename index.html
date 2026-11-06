@@ -457,6 +457,21 @@ header .sub{color:#E6D2D6;}
 .pr-linha .pr-topo{display:flex;align-items:center;justify-content:space-between;gap:8px;}
 .pr-linha .meta{font-size:12px;color:var(--ink-soft);margin-top:2px;}
 .badge-obs{background:var(--paper-alt);color:var(--ink-soft);}
+/* Pesquisa, filtros e visões (v1_11) */
+.pq-busca{position:relative;margin-bottom:10px;}
+.pq-busca input{width:100%;padding-right:38px;}
+.pq-x{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;font-size:18px;color:var(--ink-soft);padding:6px 9px;cursor:pointer;display:none;}
+.pq-busca.tem .pq-x{display:block;}
+.pq-rot{font-size:12px;color:var(--ink-soft);margin:8px 0 4px;font-weight:700;}
+.pq-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
+.pq-chip{background:var(--card);color:var(--accent);border:1.5px solid var(--accent);border-radius:20px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer;}
+.pq-chip.on{background:var(--accent);color:#fff;}
+.pq-painel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;}
+.pq-painel label{margin-top:8px;}
+.pq-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
+.vs-bloco{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 11px;margin-bottom:8px;}
+.vs-bloco .vs-desc{font-size:12px;color:var(--ink-soft);margin:3px 0 7px;}
+.vs-bloco .vs-bts{display:flex;flex-wrap:wrap;gap:6px;}
 </style>
 </head>
 <body>
@@ -500,7 +515,12 @@ header .sub{color:#E6D2D6;}
   <!-- ================= PESQUISA ================= -->
   <section class="view" id="view-pesquisa">
     <h2 class="section-title">Pesquisa</h2>
-    <div class="vazio">A pesquisa chega em uma versão futura.</div>
+    <div class="pq-busca" id="pq-busca"><input type="text" id="pq-q" placeholder="Título, subtítulo, autor ou personagem" autocomplete="off"><button class="pq-x" id="pq-x" type="button" aria-label="Limpar">✕</button></div>
+    <div class="pq-rot">Visões</div>
+    <div class="pq-chips" id="pq-visoes"></div>
+    <div class="pq-acoes" id="pq-barra"></div>
+    <div id="pq-painel"></div>
+    <div id="pq-res"></div>
   </section>
 
   <!-- ================= MAIS ================= -->
@@ -508,6 +528,7 @@ header .sub{color:#E6D2D6;}
     <h2 class="section-title">Mais</h2>
     <button class="btn btn-outline btn-block" id="btnGoInicio" type="button" style="margin-bottom:10px;text-align:left">🏠 Tela de atalhos</button>
     <button class="btn btn-outline btn-block" id="btnGoAutores" type="button" style="margin-bottom:10px;text-align:left">✍️ Autores</button>
+    <button class="btn btn-outline btn-block" id="btnGoVisoes" type="button" style="margin-bottom:10px;text-align:left">🔖 Visões e filtros salvos</button>
     <button class="btn btn-outline btn-block" id="btnGoCategorias" type="button" style="margin-bottom:10px;text-align:left">🏷️ Categorias de livros</button>
     <button class="btn btn-outline btn-block" id="btnGoLocais" type="button" style="margin-bottom:10px;text-align:left">📍 Locais (onde vi os preços)</button>
     <button class="btn btn-outline btn-block" id="btnGoExportar" type="button" style="margin-bottom:10px;text-align:left">📤 Backup e restauração</button>
@@ -521,6 +542,15 @@ header .sub{color:#E6D2D6;}
     <p class="hint" style="margin-top:0;margin-bottom:10px">Toque no nome para ver os livros do autor. Autores novos também podem ser criados direto no cadastro do livro.</p>
     <div id="autores-lista"></div>
     <button class="btn btn-accent btn-block" id="btnNovoAutor" type="button">+ Novo autor</button>
+  </section>
+
+  <!-- ================= VISÕES ================= -->
+  <section class="view" id="view-visoes">
+    <button class="btn btn-outline btn-sm" id="btnVoltarMaisVisoes" type="button" style="margin-bottom:12px">← Voltar</button>
+    <h2 class="section-title">Visões e filtros salvos</h2>
+    <p class="hint" style="margin-top:0;margin-bottom:10px">Combinações de filtros que aparecem na aba Pesquisa. Toque no nome para usar. Para criar uma nova, monte os filtros na Pesquisa e toque em “Salvar como visão”.</p>
+    <div id="visoes-lista"></div>
+    <button class="btn btn-outline btn-block" id="btnRestaurarVisoes" type="button">Restaurar visões originais</button>
   </section>
 
   <!-- ================= LOCAIS ================= -->
@@ -1139,8 +1169,8 @@ document.body.addEventListener('click', (e)=>{
    Barra inferior (4 áreas + Mais) = telas RAIZ: zeram a pilha. Atalhos dentro das telas empilham.
    ============================================================ */
 const TITULOS = {inicio:'Atalhos', biblioteca:'Biblioteca', desejos:'Lista de desejos', leituras:'Leituras', pesquisa:'Pesquisa',
-  mais:'Mais', exportar:'Backup', configuracoes:'Configurações', categorias:'Categorias', autores:'Autores', locais:'Locais'};
-const VIEWS_DO_MAIS = ['inicio','exportar','configuracoes','categorias','autores','locais'];
+  mais:'Mais', exportar:'Backup', configuracoes:'Configurações', categorias:'Categorias', autores:'Autores', locais:'Locais', visoes:'Visões'};
+const VIEWS_DO_MAIS = ['inicio','exportar','configuracoes','categorias','autores','locais','visoes'];
 let viewAtual = null;
 let currentTab = null;
 function zerarPilhaTelas(){
@@ -1191,6 +1221,8 @@ function renderCurrent(){
   if(currentTab==='categorias') renderCategorias();
   if(currentTab==='autores') renderAutores();
   if(currentTab==='locais') renderLocais();
+  if(currentTab==='pesquisa') renderPesquisa();
+  if(currentTab==='visoes') renderVisoes();
   if(currentTab==='exportar') renderBackupInfo();
 }
 
@@ -1206,6 +1238,8 @@ document.getElementById('btnGoCategorias').addEventListener('click', ()=> switch
 document.getElementById('btnVoltarMaisCats').addEventListener('click', ()=> switchView('mais', {raiz:true}));
 document.getElementById('btnGoAutores').addEventListener('click', ()=> switchView('autores', {raiz:true}));
 document.getElementById('btnVoltarMaisAutores').addEventListener('click', ()=> switchView('mais', {raiz:true}));
+document.getElementById('btnGoVisoes').addEventListener('click', ()=> switchView('visoes', {raiz:true}));
+document.getElementById('btnVoltarMaisVisoes').addEventListener('click', ()=> switchView('mais', {raiz:true}));
 document.getElementById('btnGoLocais').addEventListener('click', ()=> switchView('locais', {raiz:true}));
 document.getElementById('btnVoltarMaisLocais').addEventListener('click', ()=> switchView('mais', {raiz:true}));
 document.getElementById('btnGoConfiguracoes').addEventListener('click', ()=> switchView('configuracoes', {raiz:true}));
@@ -2831,6 +2865,231 @@ document.getElementById('autores-lista').addEventListener('click', async e=>{
 });
 
 /* ============================================================
+   PESQUISA, FILTROS E VISÕES SALVAS (v1_11)
+   Um único mecanismo: a Pesquisa monta um "filtro"; a visão salva é só um filtro com nome e ordem.
+   O texto digitado não faz parte da visão.
+   ============================================================ */
+const VISOES_ORIGINAIS = [
+  {original:'meus', nome:'Meus livros', filtros:{sit:['proprio','emprestado']}},
+  {original:'desejos', nome:'Lista de desejos', filtros:{sit:['desejo']}},
+  {original:'lidos', nome:'Lidos', filtros:{leitura:'lido'}}
+];
+const LEITURA_ROTULOS = {lido:'Lido', andamento:'Em andamento', naolido:'Não lido'};
+function filtroVazio(){ return {sit:[], leitura:'', categoriaId:null, subcategoriaId:null, autorId:null}; }
+/* Normaliza e descarta referências que não existem mais (categoria/autor excluídos). */
+function filtroNormal(f){
+  f = f || {};
+  const o = filtroVazio();
+  o.sit = Object.keys(SITUACOES).filter(k=> (f.sit||[]).includes(k));
+  o.leitura = LEITURA_ROTULOS[f.leitura] ? f.leitura : '';
+  o.categoriaId = CATS.some(c=>c.id===f.categoriaId) ? f.categoriaId : null;
+  const sc = SUBCATS.find(x=>x.id===f.subcategoriaId);
+  if(sc && CATS.some(c=>c.id===sc.categoriaId)){ o.subcategoriaId = sc.id; o.categoriaId = sc.categoriaId; }
+  o.autorId = AUTORES.some(a=>a.id===f.autorId) ? f.autorId : null;
+  return o;
+}
+function filtroIgual(a,b){ return JSON.stringify(filtroNormal(a))===JSON.stringify(filtroNormal(b)); }
+function filtroContagem(f){
+  f = filtroNormal(f);
+  return (f.sit.length?1:0) + (f.leitura?1:0) + (f.categoriaId?1:0) + (f.autorId?1:0);
+}
+function descreverFiltro(f){
+  f = filtroNormal(f);
+  const p = [];
+  if(f.sit.length) p.push(f.sit.map(k=>SITUACOES[k]).join(' ou '));
+  if(f.leitura) p.push(LEITURA_ROTULOS[f.leitura]);
+  if(f.categoriaId){
+    const c = CATS.find(x=>x.id===f.categoriaId), s = SUBCATS.find(x=>x.id===f.subcategoriaId);
+    p.push('Categoria: ' + c.nome + (s ? ' › '+s.nome : ''));
+  }
+  if(f.autorId) p.push('Autor: ' + nomeAutor(f.autorId));
+  return p.length ? p.join(' · ') : 'Sem filtros (todos os livros)';
+}
+let _pqTexto = '', _pqFiltro = filtroVazio(), _pqAberto = false, _visaoAtiva = null;
+
+function livrosPesquisa(){
+  const f = filtroNormal(_pqFiltro);
+  const lidos = new Set(), andando = new Set();
+  LEITURAS.forEach(lt=>{ if(lt.status==='finalizada') lidos.add(lt.livroId); else if(lt.status==='andamento') andando.add(lt.livroId); });
+  const pers = {};
+  PERSONAGENS.forEach(p=>{ (pers[p.livroId] = pers[p.livroId] || []).push(p.nome); });
+  const toks = semAcento(_pqTexto).split(/\s+/).filter(Boolean);
+  return LIVROS.filter(l=>{
+    if(f.sit.length && !f.sit.includes(l.situacao || 'proprio')) return false;
+    if(f.leitura==='lido' && !lidos.has(l.id)) return false;
+    if(f.leitura==='andamento' && !andando.has(l.id)) return false;
+    if(f.leitura==='naolido' && lidos.has(l.id)) return false;
+    if(f.subcategoriaId){ if(l.subcategoriaId!==f.subcategoriaId) return false; }
+    else if(f.categoriaId && l.categoriaId!==f.categoriaId) return false;
+    if(f.autorId && !(l.autorIds||[]).includes(f.autorId)) return false;
+    if(toks.length){
+      const hay = semAcento([l.titulo, l.subtitulo].concat(nomesAutores(l), pers[l.id]||[]).join(' '));
+      if(!toks.every(t=> hay.includes(t))) return false;
+    }
+    return true;
+  }).sort((a,b)=> a.titulo.localeCompare(b.titulo, 'pt-BR'));
+}
+function optsSel(lista, sel, vazioRot){
+  return `<option value="">${vazioRot}</option>` + lista.map(o=>`<option value="${o.id}" ${o.id===sel?'selected':''}>${escapeHtml(o.nome)}</option>`).join('');
+}
+function pqDesenharResultados(){
+  const el = document.getElementById('pq-res');
+  const lista = livrosPesquisa();
+  if(!LIVROS.length){ el.innerHTML = '<div class="vazio">Nenhum livro cadastrado ainda.</div>'; return; }
+  if(!lista.length){ el.innerHTML = '<div class="vazio">Nenhum livro encontrado com esta pesquisa e estes filtros.</div>'; return; }
+  el.innerHTML = `<div class="livros-barra"><span class="hint">${lista.length} ${lista.length===1?'livro':'livros'}</span>`
+    + `<button class="btn btn-outline btn-xs" type="button" data-act="layout">${layoutTela==='grade' ? '☰ Lista' : '▦ Grade'}</button></div>`
+    + `<div class="${layoutTela==='grade' ? 'livros-grade' : 'livros-lista'}">${lista.map(livroItemHTML).join('')}</div>`;
+}
+function renderPesquisa(){
+  _pqFiltro = filtroNormal(_pqFiltro);
+  const f = _pqFiltro, n = filtroContagem(f);
+  const ativa = n ? VISOES.find(v=> filtroIgual(v.filtros, f)) : null;
+  document.getElementById('pq-visoes').innerHTML = VISOES.length
+    ? VISOES.map(v=>`<button class="pq-chip ${ativa && ativa.id===v.id ? 'on' : ''}" type="button" data-v="${v.id}">${escapeHtml(v.nome)}</button>`).join('')
+    : '<span class="hint" style="margin:0">Nenhuma visão salva. Monte filtros e toque em “Salvar como visão”.</span>';
+  const base = _visaoAtiva ? VISOES.find(v=>v.id===_visaoAtiva) : null;
+  let barra = `<button class="btn ${_pqAberto?'btn-accent':'btn-outline'} btn-sm" type="button" data-act="painel">⚙ Filtros${n?` (${n})`:''}</button>`;
+  if(n && !ativa) barra += `<button class="btn btn-outline btn-sm" type="button" data-act="salvar">💾 Salvar como visão</button>`;
+  if(n && base && !filtroIgual(base.filtros, f)) barra += `<button class="btn btn-outline btn-sm" type="button" data-act="atualizar">↻ Atualizar “${escapeHtml(base.nome)}”</button>`;
+  if(n) barra += `<button class="btn btn-outline btn-sm" type="button" data-act="limpar">✕ Limpar filtros</button>`;
+  document.getElementById('pq-barra').innerHTML = barra;
+  const painel = document.getElementById('pq-painel');
+  if(!_pqAberto){ painel.innerHTML = ''; }
+  else{
+    const subs = f.categoriaId ? SUBCATS.filter(s=>s.categoriaId===f.categoriaId).sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')) : [];
+    painel.innerHTML = `<div class="pq-painel">
+      <label style="margin-top:0">Situação do livro</label>
+      <div class="pq-chips">${Object.keys(SITUACOES).map(k=>`<button class="pq-chip ${f.sit.includes(k)?'on':''}" type="button" data-sit="${k}">${SITUACOES[k]}</button>`).join('')}</div>
+      <label>Leitura</label>
+      <select data-f="leitura"><option value="">Qualquer</option>${Object.keys(LEITURA_ROTULOS).map(k=>`<option value="${k}" ${f.leitura===k?'selected':''}>${LEITURA_ROTULOS[k]}</option>`).join('')}</select>
+      <label>Categoria</label>
+      <select data-f="categoriaId">${optsSel([...CATS].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')), f.categoriaId, 'Todas')}</select>
+      ${subs.length ? `<label>Subcategoria</label><select data-f="subcategoriaId">${optsSel(subs, f.subcategoriaId, 'Todas')}</select>` : ''}
+      <label>Autor</label>
+      <select data-f="autorId">${optsSel([...AUTORES].sort((a,b)=>a.nome.localeCompare(b.nome,'pt-BR')), f.autorId, 'Todos')}</select>
+    </div>`;
+  }
+  document.getElementById('pq-busca').classList.toggle('tem', !!_pqTexto);
+  pqDesenharResultados();
+}
+document.getElementById('pq-q').addEventListener('input', e=>{
+  _pqTexto = e.target.value;
+  document.getElementById('pq-busca').classList.toggle('tem', !!_pqTexto);
+  pqDesenharResultados();
+});
+document.getElementById('pq-x').addEventListener('click', ()=>{
+  _pqTexto = ''; const q = document.getElementById('pq-q'); q.value = ''; renderPesquisa(); q.focus();
+});
+document.getElementById('pq-visoes').addEventListener('click', e=>{
+  const b = e.target.closest('[data-v]'); if(!b) return;
+  const v = VISOES.find(x=>x.id===Number(b.dataset.v)); if(!v) return;
+  if(filtroContagem(_pqFiltro) && filtroIgual(v.filtros, _pqFiltro)){ _pqFiltro = filtroVazio(); _visaoAtiva = null; }   // tocar na visão ativa desliga
+  else{ _pqFiltro = filtroNormal(v.filtros); _visaoAtiva = v.id; }
+  renderPesquisa();
+});
+document.getElementById('pq-painel').addEventListener('click', e=>{
+  const b = e.target.closest('[data-sit]'); if(!b) return;
+  const k = b.dataset.sit, i = _pqFiltro.sit.indexOf(k);
+  if(i>=0) _pqFiltro.sit.splice(i,1); else _pqFiltro.sit.push(k);
+  renderPesquisa();
+});
+document.getElementById('pq-painel').addEventListener('change', e=>{
+  const sel = e.target.closest('[data-f]'); if(!sel) return;
+  const campo = sel.dataset.f, v = sel.value;
+  if(campo==='leitura') _pqFiltro.leitura = v;
+  else if(campo==='categoriaId'){ _pqFiltro.categoriaId = v ? Number(v) : null; _pqFiltro.subcategoriaId = null; }
+  else _pqFiltro[campo] = v ? Number(v) : null;
+  renderPesquisa();
+});
+document.getElementById('pq-barra').addEventListener('click', async e=>{
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const act = b.dataset.act;
+  if(act==='painel'){ _pqAberto = !_pqAberto; renderPesquisa(); return; }
+  if(act==='limpar'){ _pqFiltro = filtroVazio(); _visaoAtiva = null; renderPesquisa(); return; }
+  if(act==='salvar'){
+    const nome = await pedirNome('Nome da nova visão:', '', VISOES);
+    if(!nome) return;
+    const ordem = VISOES.reduce((m,v)=> Math.max(m, v.ordem||0), 0) + 1;
+    const id = await putRecord('visoes', {nome, ordem, filtros: filtroNormal(_pqFiltro), original:null});
+    await reloadAll(); _visaoAtiva = id; renderCurrent(); return;
+  }
+  if(act==='atualizar'){
+    const v = VISOES.find(x=>x.id===_visaoAtiva); if(!v) return;
+    if(!await confirmar(`Atualizar a visão “${v.nome}” com os filtros atuais?\n\nAntes: ${descreverFiltro(v.filtros)}\nDepois: ${descreverFiltro(_pqFiltro)}`)) return;
+    await putRecord('visoes', {...v, filtros: filtroNormal(_pqFiltro)});
+    await reloadAll(); renderCurrent();
+  }
+});
+document.getElementById('pq-res').addEventListener('click', e=>{
+  if(e.target.closest('[data-act="layout"]')){ layoutTela = layoutTela==='grade' ? 'lista' : 'grade'; pqDesenharResultados(); return; }
+  const it = e.target.closest('.livro-item'); if(it) abrirLivro(Number(it.dataset.id));
+});
+
+/* ---- Administração das visões (Mais → Visões e filtros salvos) ---- */
+async function semearVisoes(){
+  if(localStorage.getItem(LS_PREFIX+'visoes_semeadas')) return;
+  if(!VISOES.length){
+    let ordem = 1;
+    for(const o of VISOES_ORIGINAIS) await putRecord('visoes', {nome:o.nome, ordem:ordem++, filtros:filtroNormal(o.filtros), original:o.original});
+    await reloadAll();
+  }
+  localStorage.setItem(LS_PREFIX+'visoes_semeadas', '1');
+}
+function renderVisoes(){
+  const el = document.getElementById('visoes-lista');
+  if(!VISOES.length){ el.innerHTML = '<div class="vazio" style="margin-bottom:12px">Nenhuma visão salva.</div>'; return; }
+  el.innerHTML = VISOES.map((v,i)=>`<div class="vs-bloco">
+    <div class="cat-linha"><span class="nome clicavel" data-act="usar" data-id="${v.id}">${escapeHtml(v.nome)}${v.original?' <small>(original)</small>':''}</span></div>
+    <div class="vs-desc">${escapeHtml(descreverFiltro(v.filtros))}</div>
+    <div class="vs-bts">
+      <button class="btn btn-outline btn-xs" data-act="sobe" data-id="${v.id}" type="button" ${i===0?'disabled':''}>▲</button>
+      <button class="btn btn-outline btn-xs" data-act="desce" data-id="${v.id}" type="button" ${i===VISOES.length-1?'disabled':''}>▼</button>
+      <button class="btn btn-outline btn-xs" data-act="ren" data-id="${v.id}" type="button">Renomear</button>
+      <button class="btn btn-danger btn-xs" data-act="del" data-id="${v.id}" type="button">Excluir</button>
+    </div></div>`).join('');
+}
+async function moverVisao(id, delta){
+  const i = VISOES.findIndex(v=>v.id===id), j = i + delta;
+  if(i<0 || j<0 || j>=VISOES.length) return;
+  const ordenada = VISOES.slice(); const [x] = ordenada.splice(i,1); ordenada.splice(j,0,x);
+  for(let k=0;k<ordenada.length;k++) if(ordenada[k].ordem!==k+1) await putRecord('visoes', {...ordenada[k], ordem:k+1});
+  await reloadAll(); renderCurrent();
+}
+document.getElementById('visoes-lista').addEventListener('click', async e=>{
+  const b = e.target.closest('[data-act]'); if(!b) return;
+  const id = Number(b.dataset.id), act = b.dataset.act;
+  const v = VISOES.find(x=>x.id===id); if(!v) return;
+  if(act==='usar'){ _pqFiltro = filtroNormal(v.filtros); _visaoAtiva = v.id; switchView('pesquisa', {raiz:true}); return; }
+  if(act==='sobe'){ await moverVisao(id, -1); return; }
+  if(act==='desce'){ await moverVisao(id, 1); return; }
+  if(act==='ren'){
+    const nome = await pedirNome('Novo nome da visão:', v.nome, VISOES);
+    if(!nome || nome===v.nome) return;
+    await putRecord('visoes', {...v, nome}); await reloadAll(); renderCurrent(); return;
+  }
+  if(act==='del'){
+    if(!await confirmar(`Excluir a visão “${v.nome}”?\n\nOs livros não são afetados.${v.original ? ' Dá para trazê-la de volta em “Restaurar visões originais”.' : ''}`)) return;
+    await deleteRecord('visoes', id);
+    if(_visaoAtiva===id) _visaoAtiva = null;
+    await reloadAll(); renderCurrent();
+  }
+});
+document.getElementById('btnRestaurarVisoes').addEventListener('click', async ()=>{
+  const msg = 'Restaurar as visões originais (Meus livros, Lista de desejos e Lidos)?\n\nAs que faltam voltam ao fim da lista e as que existem recuperam nome e filtros originais. Suas outras visões não mudam.';
+  if(!await confirmar(msg)) return;
+  let ordem = VISOES.reduce((m,v)=> Math.max(m, v.ordem||0), 0);
+  for(const o of VISOES_ORIGINAIS){
+    const ex = VISOES.find(v=>v.original===o.original);
+    const nomeLivre = !VISOES.some(v=> v!==ex && normalizeNome(v.nome)===normalizeNome(o.nome));
+    const nome = nomeLivre ? o.nome : o.nome + ' (original)';
+    if(ex) await putRecord('visoes', {...ex, nome, filtros:filtroNormal(o.filtros)});
+    else await putRecord('visoes', {nome, ordem:++ordem, filtros:filtroNormal(o.filtros), original:o.original});
+  }
+  await reloadAll(); renderCurrent();
+});
+
+/* ============================================================
    BACKUP COMPLETO JSON (inclui capas) + ALERTA DE 7 DIAS
    Exporta TODOS os stores do banco e todas as chaves livros_* do localStorage: nada é listado à mão.
    ============================================================ */
@@ -2931,7 +3190,7 @@ document.getElementById('btnImportJson').addEventListener('click', async ()=>{
    ============================================================ */
 fillConfiguracoesForm();
 /* ---- PWA: versão, armazenamento persistente e service worker ---- */
-const APP_VERSION = 'v1_10';
+const APP_VERSION = 'v1_11';
 document.getElementById('appVersaoTxt').textContent = APP_VERSION;
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persist().then(ok=>{
@@ -2945,6 +3204,7 @@ if('serviceWorker' in navigator && location.protocol.startsWith('http')){
 openDB().then(async ()=>{
   if(!localStorage.getItem(LS_PREFIX+'primeiro_uso')) localStorage.setItem(LS_PREFIX+'primeiro_uso', todayLocal());
   await reloadAll();
+  await semearVisoes();
   switchView(CONFIG.telaInicial==='atalhos' ? 'inicio' : 'leituras', {raiz:true});
 }).catch(err=>{
   document.body.innerHTML = '<div style="padding:24px;font-family:sans-serif">Erro ao abrir o banco de dados local: '+err+'</div>';
