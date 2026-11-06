@@ -12,18 +12,45 @@
 <link rel="icon" href="icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icon-192.png">
 <style>
+/* ============================================================
+   LIVROS — folha de estilo (v1_12)
+   Identidade própria: bordô + dourado sobre papel creme; títulos com serifa (fontes do sistema,
+   funciona offline). Ícones: sprite SVG embutido (símbolos #i-*), desenhados com currentColor.
+   ============================================================ */
 :root{
-  --paper:#FAF6EE;
-  --paper-alt:#F1EAD9;
-  --card:#FFFFFF;
-  --ink:#20242B;
-  --ink-soft:#6B7280;
-  --accent:#C1440E;
-  --accent-soft:#F1D9C9;
+  --paper:#F6F0E4;
+  --paper-alt:#ECE3D0;
+  --card:#FFFDF8;
+  --ink:#2B2024;
+  --ink-soft:#75696B;
+  --accent:#7A2E3A;
+  --accent-soft:#EBD3D6;
+  --on-accent:#FFFFFF;       /* texto sobre fundo --accent (no escuro o rosa é claro: texto escuro) */
   --good:#3F7D58;
   --good-soft:#DCEBE1;
-  --line:#DED4BE;
+  --line:#D9CDB4;
   --danger:#B0341F;
+  --bar:#3A1F27;             /* barra do topo */
+  --bar-ink:#F6F0E4;
+  --bar-soft:#E6D2D6;
+  --serif:Georgia,"Iowan Old Style","Palatino Linotype",Palatino,"Times New Roman",serif;
+}
+html.dark{
+  --paper:#171316;
+  --paper-alt:#201A1E;
+  --card:#271F24;
+  --ink:#EFE7DA;
+  --ink-soft:#A39A9C;
+  --accent:#D9798B;
+  --accent-soft:#3A2227;
+  --on-accent:#2B1218;
+  --good:#5BC98A;
+  --good-soft:#1D3327;
+  --line:#3A3036;
+  --danger:#E2685A;
+  --bar:#0E0B0D;
+  --bar-ink:#EFE7DA;
+  --bar-soft:#C9B8BC;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
 html,body{margin:0;padding:0;height:100%;background:var(--paper);color:var(--ink);
@@ -31,15 +58,23 @@ html,body{margin:0;padding:0;height:100%;background:var(--paper);color:var(--ink
 body{display:flex;flex-direction:column;min-height:100vh;overscroll-behavior-y:contain;}
 .mono{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,"Liberation Mono",monospace;}
 
-/* ---- Header ---- */
-header{background:var(--ink);color:var(--paper);padding:6px 14px;min-height:32px;display:flex;align-items:center;gap:8px;
-  position:sticky;top:0;z-index:20;}
-.logo-tag{width:15px;height:15px;background:var(--accent);border-radius:4px 4px 4px 0;transform:rotate(-8deg);position:relative;flex:none;}
-.logo-tag::after{content:'';position:absolute;top:3px;left:3px;width:4px;height:4px;border-radius:50%;background:var(--paper);}
-header h1{font-size:14px;margin:0;font-weight:800;letter-spacing:.04em;text-transform:uppercase;line-height:1.2;}
-header .sub{font-size:11px;color:#C8CCD6;margin-left:auto;text-align:right;line-height:1.2;}
+/* ---- Ícones (sprite SVG) ---- */
+.ico{width:1.25em;height:1.25em;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none;vertical-align:-.22em;}
+.btn,.scan-btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;}
+.btn-block{display:flex;}
+.btn-xs{gap:4px;}
+.btn-xs .ico{width:14px;height:14px;vertical-align:0;}
+.btn .ico,.scan-btn .ico{vertical-align:0;}
+.escolha-lista .btn{justify-content:flex-start;}
 
-/* ---- Main / Views ---- */
+/* ---- Barra do topo ---- */
+header{background:var(--bar);color:var(--bar-ink);padding:6px 14px;min-height:40px;display:flex;align-items:center;gap:9px;
+  position:sticky;top:0;z-index:20;}
+header .logo{width:24px;height:24px;flex:none;}
+header h1{font-family:var(--serif);font-size:18px;margin:0;font-weight:700;letter-spacing:.03em;line-height:1.2;}
+header .sub{font-size:11.5px;color:var(--bar-soft);margin-left:auto;text-align:right;line-height:1.2;}
+
+/* ---- Telas ---- */
 main{flex:1;padding:14px 14px 90px;max-width:640px;width:100%;margin:0 auto;}
 .view{display:none;animation:fade .15s ease;}
 .view.active{display:block;}
@@ -49,16 +84,7 @@ h2.section-title{font-size:13px;text-transform:uppercase;letter-spacing:.08em;co
   margin:18px 0 8px;font-weight:700;}
 h2.section-title:first-child{margin-top:0;}
 
-/* ---- Search bar ---- */
-.searchbar{display:flex;gap:8px;margin-bottom:12px;}
-.searchbar input[type=text], .searchbar input[type=date]{flex:1;}
-.search-wrap{position:relative;flex:1;display:flex;min-width:0;}
-.search-wrap input[type=text]{flex:1;padding-right:34px;}
-.search-clear{position:absolute;right:4px;top:50%;transform:translateY(-50%);display:none;
-  align-items:center;justify-content:center;width:26px;height:26px;border:none;background:none;
-  color:var(--ink-soft);font-size:15px;cursor:pointer;border-radius:50%;padding:0;line-height:1;}
-.search-wrap input[type=text]:not(:placeholder-shown) ~ .search-clear{display:flex;}
-.search-clear:active{background:var(--paper-alt);}
+/* ---- Campos ---- */
 input,select,textarea{font-family:inherit;font-size:15px;padding:10px 11px;border:1.5px solid var(--line);
   border-radius:9px;background:var(--card);color:var(--ink);width:100%;}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);}
@@ -67,111 +93,53 @@ textarea{resize:vertical;min-height:56px;line-height:1.35;overflow-y:auto;}
 .obs,.pre-wrap{white-space:pre-wrap;}
 label{display:block;font-size:12px;font-weight:700;color:var(--ink-soft);margin:10px 0 4px;text-transform:uppercase;letter-spacing:.04em;}
 label:first-child{margin-top:0;}
+.form-compacto label{margin:8px 0 3px;}
+.form-compacto label:first-child{margin-top:0;}
+.form-compacto .sheet-actions{margin-top:12px;}
 
-/* ---- Buttons ---- */
+/* ---- Botões ---- */
 button{font-family:inherit;cursor:pointer;border:none;}
 .btn{background:var(--ink);color:var(--paper);padding:11px 16px;border-radius:9px;font-weight:700;font-size:14px;}
-.btn-accent{background:var(--accent);color:#fff;}
+.btn-accent{background:var(--accent);color:var(--on-accent);}
 .btn-outline{background:transparent;border:1.5px solid var(--line);color:var(--ink);}
 .btn-danger{background:transparent;color:var(--danger);border:1.5px solid var(--danger);}
 .btn-sm{padding:7px 11px;font-size:12.5px;border-radius:7px;}
 .btn-xs{padding:4px 9px;font-size:11px;border-radius:6px;}
-.btn-preparos{flex:none;align-self:center;display:flex;flex-direction:column;align-items:center;gap:1px;
-  padding:6px 9px;border-radius:8px;line-height:1.15;font-size:13px;font-weight:700;}
-.btn-preparos small{font-size:9px;font-weight:700;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.03em;}
 .btn-block{width:100%;}
+.btn:disabled{opacity:.45;cursor:default;}
 .fab{position:fixed;right:16px;bottom:78px;width:54px;height:54px;border-radius:50%;background:var(--accent);
-  color:#fff;font-size:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(193,68,14,.4);z-index:15;}
-
-/* ---- Cards / lists ---- */
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:9px;
-  display:flex;gap:11px;align-items:flex-start;cursor:pointer;transition:background .12s;}
-.card:active{background:var(--paper-alt);}
-.card img.thumb{width:46px;height:46px;border-radius:8px;object-fit:cover;flex:none;border:1px solid var(--line);}
-.thumb-ph{width:46px;height:46px;border-radius:8px;flex:none;background:var(--paper-alt);display:flex;align-items:center;
-  justify-content:center;font-size:18px;color:var(--ink-soft);}
-.card .body{flex:1;min-width:0;}
-.card .title{font-weight:700;font-size:15px;}
-.card .meta{font-size:12.5px;color:var(--ink-soft);margin-top:2px;}
-.card .obs{font-size:12.5px;color:var(--ink-soft);margin-top:4px;font-style:italic;}
-.card .actions{display:flex;gap:6px;margin-top:8px;}
-.card.selecionado{border-color:var(--accent);background:var(--accent-soft);}
-.card.comprado{opacity:.62;}
-.card.comprado .title{text-decoration:line-through;}
-.lista-hist{margin-top:8px;padding-top:6px;border-top:1px dashed var(--line);font-size:12.5px;color:var(--ink-soft);}
-.lista-hist div{margin-top:2px;}
-.list-actions-row{display:flex;gap:6px;align-items:center;}
-.list-actions-row .btn{flex:1;white-space:nowrap;padding:6px 8px;font-size:11.5px;}
-.select-toggle-zone{width:30px;align-self:stretch;display:flex;align-items:center;justify-content:center;
-  background:transparent;border:none;flex:none;padding:0;margin:-2px 0;}
-.select-dot{width:18px;height:18px;border-radius:50%;border:1.5px solid var(--line);display:block;flex:none;}
-.select-toggle-zone.on .select-dot{background:var(--accent);border-color:var(--accent);}
+  color:var(--on-accent);font-size:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(0,0,0,.28);z-index:15;}
 .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:20px;margin-right:5px;}
 .badge-good{background:var(--good-soft);color:var(--good);}
 .badge-bad{background:var(--accent-soft);color:var(--accent);}
 
-/* price line = receipt style */
-.price-row{display:flex;align-items:baseline;gap:8px;}
-.price-row .name{font-weight:700;font-size:14.5px;min-width:0;}
-.price-row .dots{flex:1;border-bottom:1.5px dotted var(--line);height:0;margin-bottom:4px;}
-.price-row .val{font-weight:800;font-size:16px;white-space:nowrap;flex:none;}
-
-/* ---- Coluna foto + tag compacta (compra/não comprei) ---- */
-.thumb-col{display:flex;flex-direction:column;align-items:center;gap:4px;flex:none;width:46px;}
-.badge-mini{display:block;width:100%;box-sizing:border-box;font-size:9.5px;font-weight:700;line-height:1.15;
-  padding:2px 2px;border-radius:7px;text-align:center;white-space:normal;word-break:break-word;}
-.badge-mini.badge-good{background:var(--good-soft);color:var(--good);}
-.badge-mini.badge-bad{background:var(--accent-soft);color:var(--accent);}
-
-.empty{text-align:center;color:var(--ink-soft);padding:36px 12px;font-size:14px;}
-
-/* ---- Modal ---- */
+/* ---- Janelas (sheets) ---- */
 .overlay{position:fixed;inset:0;background:rgba(20,20,20,.45);display:none;align-items:flex-end;z-index:50;}
 .overlay.active{display:flex;}
 .sheet{background:var(--paper);width:100%;max-height:92vh;overflow-y:auto;border-radius:16px 16px 0 0;
   padding:16px 16px calc(16px + env(safe-area-inset-bottom));animation:slideup .18s ease;}
 @keyframes slideup{from{transform:translateY(24px);opacity:0;}to{transform:translateY(0);opacity:1;}}
-.sheet h3{margin:0 0 12px;font-size:17px;}
+.sheet h3{font-family:var(--serif);margin:0 0 12px;font-size:18px;}
 .sheet-actions{display:flex;gap:8px;margin-top:16px;}
 .photo-pick{display:flex;align-items:center;gap:10px;margin-top:6px;}
-.photo-pick img{width:64px;height:64px;border-radius:10px;object-fit:cover;border:1px solid var(--line);}
+.photo-pick img{width:64px;height:64px;border-radius:10px;object-fit:cover;border:1px solid var(--line);cursor:zoom-in;}
 .photo-pick .ph{width:64px;height:64px;border-radius:10px;background:var(--paper-alt);display:flex;align-items:center;
   justify-content:center;color:var(--ink-soft);font-size:22px;}
 .check-row{display:flex;align-items:center;gap:8px;margin-top:10px;}
 .check-row input{width:auto;}
-
-/* ---- Modo leitura da receita (visual mais compacto, "de impressão") ---- */
-.view-heading{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;
-  color:var(--ink-soft);margin:18px 0 6px;border-bottom:1px solid var(--line);padding-bottom:4px;}
-.view-secao{font-weight:700;margin:10px 0 2px;}
-.view-ing-linha{padding:3px 0;border-bottom:1px dashed var(--line);font-size:14px;cursor:pointer;}
-.view-clicavel{cursor:pointer;text-decoration:underline;text-decoration-style:dotted;}
-.view-clicavel-bloco{padding:3px 0;border-bottom:1px dashed var(--line);font-size:14px;cursor:pointer;}
-.view-ing-linha:last-child{border-bottom:none;}
-.view-etapa{padding:5px 0;border-bottom:1px dashed var(--line);}
-.view-etapa:last-child{border-bottom:none;}
-.view-etapa .num{color:var(--accent);font-weight:700;}
-/* ---- Tipografia dos modos leitura (receita, preparo, transformação): 3 estilos ----
-   Título        = .view-heading (12px, negrito, maiúsculas, cinza) — títulos de bloco
-   Texto normal  = 14px, cor padrão — tudo que está dentro de .leitura
-   Nota rodapé   = .view-nota / .hint / .obs dentro de .leitura (12px, cinza) — custo, observações de item/etapa, avisos
-   Todo modo leitura embrulha o conteúdo em <div class="leitura"> e usa só esses três. */
-.leitura{font-size:14px;line-height:1.4;}
-.view-nota,.leitura .hint,.leitura .obs{font-size:12px;line-height:1.35;color:var(--ink-soft);}
-.leitura .tr-read,.leitura .tr-resumo{font-size:inherit;}
-
-/* ---- Modal de seleção de ingrediente: ancorado no topo, título/busca fixos, lista rola por baixo ---- */
+/* Sub-janela (sobre o formulário): ocupa a tela inteira */
 #subOverlay{align-items:stretch;background:var(--paper);}
 #subSheet{width:100%;max-height:none;height:100%;border-radius:0;overflow-y:auto;padding-bottom:24px;}
-#ingPickerOverlay{align-items:flex-start;}
-#ingPickerSheet{height:92vh;display:flex;flex-direction:column;border-radius:0 0 16px 16px;overflow-y:hidden;}
-#ip-lista-wrap{flex:1;overflow-y:auto;margin-top:12px;}
-#ingPickerSheet .sheet-actions{flex:none;}
 .overlay.top-anchored{align-items:flex-start;}
 .overlay.top-anchored .sheet{height:92vh;border-radius:0 0 16px 16px;}
 
+/* ---- Tipografia dos modos de leitura: título (.det-sec-t), texto (.leitura, 14px), nota (.hint/.obs, 12px cinza) ---- */
+.leitura{font-size:14px;line-height:1.4;}
+.leitura .hint,.leitura .obs{font-size:12px;line-height:1.35;color:var(--ink-soft);}
+.hint{font-size:12px;color:var(--ink-soft);margin-top:6px;}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+
 /* ---- Foto ampliada (lightbox) ---- */
-.card img.thumb, .photo-pick img{cursor:zoom-in;}
 .lightbox{position:fixed;inset:0;background:rgba(10,10,10,.9);display:none;align-items:center;justify-content:center;
   z-index:80;padding:24px;}
 .lightbox.active{display:flex;}
@@ -179,88 +147,18 @@ button{font-family:inherit;cursor:pointer;border:none;}
 .lightbox-close{position:absolute;top:16px;right:16px;width:40px;height:40px;border-radius:50%;
   background:rgba(255,255,255,.15);color:#fff;font-size:22px;display:flex;align-items:center;justify-content:center;}
 
-/* ---- Bottom nav ---- */
+/* ---- Barra inferior ---- */
 nav.tabs{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--line);
   display:flex;z-index:20;padding-bottom:env(safe-area-inset-bottom);}
-nav.tabs button{flex:1;background:none;padding:9px 1px 7px;display:flex;flex-direction:column;align-items:center;
-  gap:2px;color:var(--ink-soft);font-size:9.5px;font-weight:700;}
-nav.tabs button .ic{font-size:17px;}
+nav.tabs button{flex:1;background:none;padding:7px 1px 6px;display:flex;flex-direction:column;align-items:center;
+  gap:3px;color:var(--ink-soft);font-size:10.5px;font-weight:700;}
+nav.tabs button .ic{width:48px;height:28px;border-radius:14px;display:flex;align-items:center;justify-content:center;transition:background .15s;}
+nav.tabs button .ico{width:22px;height:22px;vertical-align:0;}
 nav.tabs button.active{color:var(--accent);}
-
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
-.hint{font-size:12px;color:var(--ink-soft);margin-top:6px;}
-.chart-wrap{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;}
-
-/* ---- Modo escuro ---- */
-html.dark{
-  --paper:#14161B;
-  --paper-alt:#1D2027;
-  --card:#20242C;
-  --ink:#ECE7DA;
-  --ink-soft:#9098A6;
-  --accent:#E06B33;
-  --accent-soft:#3A2A20;
-  --good:#5BC98A;
-  --good-soft:#1D3327;
-  --line:#333743;
-  --danger:#E2685A;
-}
-html.dark header{background:#0D0F13;color:#ECE7DA;}
+nav.tabs button.active .ic{background:var(--accent-soft);}
 
 /* ---- Configurações ---- */
-.cfg-theme-btn.active{background:var(--accent);color:#fff;border-color:var(--accent);}
-
-/* ---- Toast (alerta de bom preço) ---- */
-.toast{position:fixed;left:50%;bottom:100px;transform:translateX(-50%) translateY(20px);max-width:88%;
-  background:var(--good);color:#fff;padding:12px 16px;border-radius:12px;font-size:13.5px;font-weight:600;
-  box-shadow:0 8px 20px rgba(0,0,0,.25);opacity:0;pointer-events:none;transition:opacity .25s ease, transform .25s ease;
-  z-index:60;text-align:center;line-height:1.4;}
-.toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
-
-/* ---- Voltar ao topo ---- */
-.scroll-top-btn{position:fixed;left:14px;bottom:78px;width:38px;height:38px;border-radius:50%;
-  background:var(--ink);color:var(--paper);opacity:.55;display:none;align-items:center;justify-content:center;
-  font-size:16px;z-index:15;box-shadow:0 3px 10px rgba(0,0,0,.18);}
-.scroll-top-btn.show{display:flex;}
-.scroll-top-btn:active{opacity:.9;}
-
-/* ---- Tabelas compactas (transformação: rodadas; preparo: porções) ---- */
-.money-wrap{position:relative;}
-.money-wrap span{position:absolute;left:11px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:700;color:var(--ink-soft);pointer-events:none;}
-.money-wrap input{padding-left:36px;}
-.tr-form label{margin:8px 0 3px;}
-.tr-form label:first-child{margin-top:0;}
-.tr-form .sheet-actions{margin-top:12px;}
-.tr-table{width:100%;border-collapse:collapse;font-size:13px;table-layout:fixed;}
-.tr-table th,.tr-table td{border:1px solid var(--line);padding:3px 4px;text-align:center;vertical-align:middle;word-break:break-word;}
-.tr-table th{background:var(--paper-alt);font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--ink-soft);font-weight:700;padding:3px 2px;}
-.tr-table td.idx{width:42px;font-weight:700;color:var(--ink-soft);font-size:12px;}
-.tr-table td input{padding:6px 5px;font-size:14px;border-radius:6px;text-align:right;border-width:1px;}
-.tr-table tr.tot td{font-weight:800;background:var(--paper-alt);}
-.tr-table tr.pct td{font-size:11px;color:var(--ink-soft);line-height:1.25;}
-.tr-table .tr-r-del{display:block;margin:2px auto 0;background:none;color:var(--danger);font-size:12px;padding:0 4px;}
-.tr-table td.lbl{width:70px;text-align:left;font-weight:700;font-size:12px;color:var(--ink-soft);}
-.tr-table td.num{text-align:right;font-variant-numeric:tabular-nums;}
-.tr-table td.sobra{font-size:12px;}
-.tr-table td.falta{font-size:12px;color:var(--danger);font-weight:700;}
-.tr-table tr.real td.lbl{color:var(--accent);}
-.tr-read{font-size:13px;line-height:1.35;}
-.tr-read .tr-table{margin-top:8px;}
-.tr-resumo{margin:6px 0 0;font-size:13px;line-height:1.5;}
-.tr-kv{display:flex;flex-direction:column;gap:1px;min-width:0;}
-.tr-etapa{border:1px solid var(--line);border-radius:10px;padding:8px 10px 10px;margin-top:8px;background:var(--card);}
-.tr-etapa-head{display:flex;justify-content:space-between;align-items:center;}
-.tr-etapa-head .tr-e-del{background:none;color:var(--danger);font-size:14px;padding:0 6px;}
-.tr-etapa input[type=text],.tr-etapa select{font-size:14px;}
-.tr-kv span{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);}
-.tr-kv b{font-size:14px;font-weight:700;}
-.pz-ing{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:9px 10px;margin-top:8px;}
-.pz-ing .pz-nome{font-weight:700;font-size:14px;}
-.rod-pesar{font-size:14px;}
-.rod-pesar .rp-linha{display:flex;gap:8px;align-items:baseline;padding:4px 0;border-bottom:1px dashed var(--line);}
-.rod-pesar .rp-linha:last-child{border-bottom:none;}
-.rod-pesar .rp-nome{flex:1;min-width:0;}
-.rod-pesar .rp-peso{font-weight:800;white-space:nowrap;}
+.cfg-theme-btn.active{background:var(--accent);color:var(--on-accent);border-color:var(--accent);}
 
 /* ---- Diálogos do app (substituem alert/confirm/prompt nativos, que mostram o endereço do site no título) ---- */
 .dlg-overlay{position:fixed;inset:0;background:rgba(20,20,20,.55);display:none;align-items:center;justify-content:center;z-index:100;padding:24px;}
@@ -271,49 +169,19 @@ html.dark header{background:#0D0F13;color:#ECE7DA;}
 .dlg-actions{display:flex;gap:8px;margin-top:16px;}
 .dlg-actions .btn{flex:1;}
 
-/* ---- Duplicatas ---- */
-.dup-pair{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 13px;margin-bottom:9px;}
-.dup-pair .dup-sim{font-size:11.5px;color:var(--ink-soft);margin-top:4px;}
-
-.ajuda-p{margin:2px 0 4px!important;display:flex;align-items:flex-start;gap:6px}
-.ajuda-btn{flex:none;width:18px;height:18px;padding:0;border-radius:50%;border:1px solid var(--line);background:transparent;color:var(--ink-soft);font-size:11px;font-weight:700;line-height:16px;cursor:pointer}
-.ajuda-txt{flex:1;min-width:0}
-
-/* ============================================================
-   IDENTIDADE VISUAL DO APP LIVROS (sobrepõe as cores herdadas do Preços)
-   ============================================================ */
-:root{
-  --paper:#F6F0E4;
-  --paper-alt:#ECE3D0;
-  --card:#FFFDF8;
-  --ink:#2B2024;
-  --ink-soft:#75696B;
-  --accent:#7A2E3A;
-  --accent-soft:#EBD3D6;
-  --good:#3F7D58;
-  --good-soft:#DCEBE1;
-  --line:#D9CDB4;
-  --danger:#B0341F;
-}
-html.dark{
-  --paper:#171316;
-  --paper-alt:#201A1E;
-  --card:#271F24;
-  --ink:#EFE7DA;
-  --ink-soft:#A39A9C;
-  --accent:#D9798B;
-  --accent-soft:#3A2227;
-  --line:#3A3036;
-}
-header{background:#3A1F27;color:#F6F0E4;}
-html.dark header{background:#0E0B0D;}
-header .sub{color:#E6D2D6;}
-.logo-tag{background:#D9A441;}
-
 /* Atalhos (tela inicial alternativa) */
-.atalho-btn{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);
-  border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:10px;font-size:16px;font-weight:700;color:var(--ink);}
-.atalho-btn .ic{font-size:26px;}
+.atalho-btn{display:flex;align-items:center;gap:14px;width:100%;text-align:left;background:var(--card);
+  border:1px solid var(--line);border-radius:14px;padding:12px 14px;margin-bottom:10px;font-size:16px;font-weight:700;color:var(--ink);}
+.atalho-btn:active{background:var(--paper-alt);}
+.atalho-btn .ic{width:44px;height:44px;border-radius:12px;background:var(--accent-soft);color:var(--accent);display:flex;align-items:center;justify-content:center;flex:none;}
+.atalho-btn .ico{width:24px;height:24px;vertical-align:0;}
+/* Lista do Mais: ícone + nome + seta */
+.mais-item{display:flex;align-items:center;gap:12px;width:100%;text-align:left;background:var(--card);color:var(--ink);
+  border:1px solid var(--line);border-radius:12px;padding:13px 14px;margin-bottom:9px;font-size:15px;font-weight:700;}
+.mais-item:active{background:var(--paper-alt);}
+.mais-item .ico{width:22px;height:22px;color:var(--accent);vertical-align:0;}
+.mais-item span{flex:1;min-width:0;}
+.mais-item .chev{width:18px;height:18px;color:var(--ink-soft);}
 .vazio{background:var(--card);border:1px dashed var(--line);border-radius:12px;padding:20px 16px;text-align:center;color:var(--ink-soft);font-size:14px;}
 
 /* Aviso de backup (7 dias) */
@@ -327,6 +195,9 @@ header .sub{color:#E6D2D6;}
 .livros-grade .livro-item{cursor:pointer;min-width:0;}
 .livros-grade .capa{width:100%;aspect-ratio:2/3;object-fit:cover;border-radius:6px;border:1px solid var(--line);display:block;background:var(--paper-alt);}
 .livros-grade .capa-ph{display:flex;align-items:center;justify-content:center;font-size:30px;}
+/* capa sem imagem: papel degradê + ícone de livro */
+.livros-grade .capa-ph,.livros-lista .capa-ph,.leit-item .capa-ph,.det-capa-ph,.photo-pick .ph{background:linear-gradient(160deg,var(--accent-soft),var(--paper-alt));color:var(--accent);}
+.capa-ph .ico,.det-capa-ph .ico,.photo-pick .ph .ico{opacity:.7;vertical-align:0;}
 .livros-grade .livro-tit{font-size:12.5px;font-weight:700;margin-top:5px;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;}
 .livros-lista .livro-item{display:flex;align-items:center;gap:12px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:8px;cursor:pointer;}
 .livros-lista .livro-item:active,.livros-grade .livro-item:active{opacity:.7;}
@@ -336,7 +207,7 @@ header .sub{color:#E6D2D6;}
 .det-topo{display:flex;gap:14px;align-items:flex-start;}
 .det-capa{width:96px;aspect-ratio:2/3;object-fit:cover;border-radius:8px;border:1px solid var(--line);flex:none;cursor:zoom-in;background:var(--paper-alt);}
 .det-capa-ph{width:96px;aspect-ratio:2/3;border-radius:8px;border:1px solid var(--line);flex:none;background:var(--paper-alt);display:flex;align-items:center;justify-content:center;font-size:34px;}
-.det-tit{font-size:18px;font-weight:800;line-height:1.25;margin:0;}
+.det-tit{font-family:var(--serif);font-size:20px;font-weight:700;line-height:1.25;margin:0;}
 .det-sub{font-size:14px;color:var(--ink-soft);margin-top:3px;}
 .det-kv{padding:5px 0;border-bottom:1px dashed var(--line);}
 .det-kv:last-child{border-bottom:none;}
@@ -360,13 +231,16 @@ header .sub{color:#E6D2D6;}
 .chip span{min-width:0;overflow-wrap:anywhere;}
 .chip button{background:none;color:inherit;font-size:15px;line-height:1;width:24px;height:24px;border-radius:50%;padding:0;flex:none;}
 .chip button:active{background:rgba(0,0,0,.12);}
+.chip button .ico{width:14px;height:14px;vertical-align:0;}
 .sug-lista{margin-top:2px;}
 .sug{display:block;width:100%;text-align:left;background:var(--card);color:var(--ink);border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin-top:6px;font-size:14px;}
 .sug:active{background:var(--paper-alt);}
 .sug.sug-novo{color:var(--accent);font-weight:700;border-style:dashed;}
 .aviso-isbn{font-size:12px;color:var(--accent);margin-top:5px;}
 .aviso-isbn:empty{display:none;}
+.aviso-isbn .ico{width:14px;height:14px;margin-right:3px;vertical-align:-.2em;}
 .cat-linha .nome.clicavel{cursor:pointer;}
+.cat-linha .nome .ico{color:var(--accent);margin-right:6px;}
 .escolha-lista .btn{margin-bottom:8px;text-align:left;}
 /* ---- Busca online por ISBN (v1_04): botão ao lado do campo e tela de revisão ---- */
 .isbn-linha{display:flex;gap:8px;align-items:stretch;}
@@ -382,6 +256,7 @@ header .sub{color:#E6D2D6;}
 .scan-msg{position:absolute;left:14px;right:14px;top:calc(env(safe-area-inset-top) + 16px);color:#fff;text-align:center;font-size:15px;line-height:1.4;text-shadow:0 1px 3px rgba(0,0,0,.8);}
 .scan-barra{display:flex;gap:10px;padding:12px 16px calc(12px + env(safe-area-inset-bottom));background:#111;}
 .scan-btn{flex:1;padding:13px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.45);background:transparent;color:#fff;font-size:15px;font-family:inherit;}
+.scan-btn .ico{width:20px;height:20px;vertical-align:-.3em;}
 .rev-row{display:flex;gap:10px;align-items:flex-start;padding:10px 0;margin:0;border-bottom:1px solid var(--line);cursor:pointer;text-transform:none;letter-spacing:0;font-size:14px;font-weight:400;color:var(--ink);}
 .rev-row input[type=checkbox]{width:22px;height:22px;flex:none;margin-top:1px;padding:0;accent-color:var(--accent);}
 .rev-row .rv{min-width:0;flex:1;}
@@ -413,7 +288,7 @@ header .sub{color:#E6D2D6;}
 .leit-linha .t{font-weight:700;font-size:14px;}
 .leit-linha .meta{font-size:12px;color:var(--ink-soft);margin-top:2px;}
 .leit-linha .pct-barra{margin-top:6px;}
-.lt-pag-grande{font-size:26px;font-weight:800;line-height:1.1;}
+.lt-pag-grande{font-family:var(--serif);font-size:28px;font-weight:700;line-height:1.1;}
 .lt-pag-grande small{font-size:14px;font-weight:400;color:var(--ink-soft);}
 .lt-registro{display:flex;gap:8px;align-items:stretch;margin-top:12px;}
 .lt-registro input{flex:1;min-width:0;font-size:20px;font-weight:700;text-align:center;}
@@ -423,7 +298,7 @@ header .sub{color:#E6D2D6;}
 .hist-seg button{flex:1;padding:7px 10px;font-size:13px;font-weight:600;background:var(--card);color:var(--ink-soft);border:1.5px solid var(--line);cursor:pointer;}
 .hist-seg button:first-child{border-radius:8px 0 0 8px;}
 .hist-seg button:last-child{border-radius:0 8px 8px 0;border-left:0;}
-.hist-seg button.active{background:var(--accent);border-color:var(--accent);color:#fff;}
+.hist-seg button.active{background:var(--accent);border-color:var(--accent);color:var(--on-accent);}
 .hist-grafico{width:100%;height:auto;display:block;}
 .hist-grafico text{fill:var(--ink-soft);font-size:10px;font-family:inherit;}
 .hist-reg{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:8px 11px;margin-bottom:6px;cursor:pointer;}
@@ -445,7 +320,7 @@ header .sub{color:#E6D2D6;}
 .chip.sem-x{padding-right:11px;}
 .an-sug{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;}
 .an-sug-i{background:var(--card);color:var(--accent);border:1.5px solid var(--accent);border-radius:20px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer;}
-.an-sug-i.nova{background:var(--accent);color:#fff;}
+.an-sug-i.nova{background:var(--accent);color:var(--on-accent);}
 .an-men{color:var(--accent);font-weight:700;}
 /* Preços dos livros (v1_10) */
 .pr-resumo{display:grid;grid-template-columns:repeat(auto-fit,minmax(78px,1fr));gap:8px;margin-bottom:10px;}
@@ -460,12 +335,13 @@ header .sub{color:#E6D2D6;}
 /* Pesquisa, filtros e visões (v1_11) */
 .pq-busca{position:relative;margin-bottom:10px;}
 .pq-busca input{width:100%;padding-right:38px;}
-.pq-x{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;font-size:18px;color:var(--ink-soft);padding:6px 9px;cursor:pointer;display:none;}
+.pq-x{position:absolute;right:6px;top:50%;transform:translateY(-50%);background:none;border:0;color:var(--ink-soft);padding:6px 9px;cursor:pointer;display:none;}
+.pq-x .ico{width:18px;height:18px;vertical-align:-.2em;}
 .pq-busca.tem .pq-x{display:block;}
 .pq-rot{font-size:12px;color:var(--ink-soft);margin:8px 0 4px;font-weight:700;}
 .pq-chips{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;}
 .pq-chip{background:var(--card);color:var(--accent);border:1.5px solid var(--accent);border-radius:20px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer;}
-.pq-chip.on{background:var(--accent);color:#fff;}
+.pq-chip.on{background:var(--accent);color:var(--on-accent);}
 .pq-painel{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px;}
 .pq-painel label{margin-top:8px;}
 .pq-acoes{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:10px;}
@@ -475,9 +351,45 @@ header .sub{color:#E6D2D6;}
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+<!-- Sprite de ícones (v1_12). Uso: <svg class="ico"><use href="#i-nome"/></svg> ou ico('nome') no JS. Traço = currentColor. -->
+<symbol id="i-logo" viewBox="0 0 32 32"><path d="M2.5 8 15 6v19.5L2.5 27.5z" fill="#F6F0E4"/><path d="M17 6l12.5 2v19.5L17 25.5z" fill="#E4D8BD"/><path d="M15 6h2v19.5h-2z" fill="#B0505F"/><path d="M21 6.6h4.4v9.2l-2.2-1.8-2.2 1.8z" fill="#D9A441"/></symbol>
+<symbol id="i-library" viewBox="0 0 24 24"><path d="m16 6 4 14"/><path d="M12 6v14"/><path d="M8 8v12"/><path d="M4 4v16"/></symbol>
+<symbol id="i-heart" viewBox="0 0 24 24"><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></symbol>
+<symbol id="i-book-open" viewBox="0 0 24 24"><path d="M12 7v14"/><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z"/></symbol>
+<symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></symbol>
+<symbol id="i-more" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.7" fill="currentColor" stroke="none"/><circle cx="19" cy="12" r="1.7" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-home" viewBox="0 0 24 24"><path d="M15 21v-8a1 1 0 0 0-1-1h-4a1 1 0 0 0-1 1v8"/><path d="M3 10a2 2 0 0 1 .709-1.528l7-5.999a2 2 0 0 1 2.582 0l7 5.999A2 2 0 0 1 21 10v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></symbol>
+<symbol id="i-pen" viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.376 3.622a1 1 0 0 1 3.002 3.002L7.368 18.635a2 2 0 0 1-.855.506l-2.872.838a.5.5 0 0 1-.62-.62l.838-2.872a2 2 0 0 1 .506-.854z"/></symbol>
+<symbol id="i-bookmark" viewBox="0 0 24 24"><path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v16z"/></symbol>
+<symbol id="i-tag" viewBox="0 0 24 24"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r="1.2" fill="currentColor" stroke="none"/></symbol>
+<symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></symbol>
+<symbol id="i-download" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></symbol>
+<symbol id="i-sliders" viewBox="0 0 24 24"><path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/></symbol>
+<symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/></symbol>
+<symbol id="i-moon" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></symbol>
+<symbol id="i-arrow-left" viewBox="0 0 24 24"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></symbol>
+<symbol id="i-chevron-right" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></symbol>
+<symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+<symbol id="i-camera" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></symbol>
+<symbol id="i-keyboard" viewBox="0 0 24 24"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="M6 8h.01"/><path d="M10 8h.01"/><path d="M14 8h.01"/><path d="M18 8h.01"/><path d="M8 12h.01"/><path d="M12 12h.01"/><path d="M16 12h.01"/><path d="M7 16h10"/></symbol>
+<symbol id="i-flash" viewBox="0 0 24 24"><path d="M18 6c0 2-2 2-2 4v10a2 2 0 0 1-2 2h-4a2 2 0 0 1-2-2V10c0-2-2-2-2-4V2h12z"/><path d="M6 6h12"/><path d="M12 12h.01"/></symbol>
+<symbol id="i-list" viewBox="0 0 24 24"><path d="M3 6h.01"/><path d="M3 12h.01"/><path d="M3 18h.01"/><path d="M8 6h13"/><path d="M8 12h13"/><path d="M8 18h13"/></symbol>
+<symbol id="i-grid" viewBox="0 0 24 24"><rect width="7" height="7" x="3" y="3" rx="1"/><rect width="7" height="7" x="14" y="3" rx="1"/><rect width="7" height="7" x="14" y="14" rx="1"/><rect width="7" height="7" x="3" y="14" rx="1"/></symbol>
+<symbol id="i-save" viewBox="0 0 24 24"><path d="M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"/><path d="M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7"/><path d="M7 3v4a1 1 0 0 0 1 1h7"/></symbol>
+<symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+<symbol id="i-up" viewBox="0 0 24 24"><path d="m18 15-6-6-6 6"/></symbol>
+<symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+<symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+<symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a.5.5 0 0 0 .76.43l12-7.5a.5.5 0 0 0 0-.86l-12-7.5A.5.5 0 0 0 7 4.5z" fill="currentColor"/></symbol>
+<symbol id="i-undo" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></symbol>
+<symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+<symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></symbol>
+</svg>
+
 
 <header>
-  <div class="logo-tag"></div>
+  <svg class="logo" aria-hidden="true"><use href="#i-logo"/></svg>
   <h1 id="headerTitle">Livros</h1>
   <div class="sub" id="headerSub"></div>
 </header>
@@ -488,10 +400,10 @@ header .sub{color:#E6D2D6;}
   <!-- ================= TELA DE ATALHOS ================= -->
   <section class="view" id="view-inicio">
     <h2 class="section-title">Atalhos</h2>
-    <button class="atalho-btn" data-go="biblioteca" type="button"><span class="ic">📚</span>Biblioteca</button>
-    <button class="atalho-btn" data-go="desejos" type="button"><span class="ic">🎁</span>Lista de desejos</button>
-    <button class="atalho-btn" data-go="leituras" type="button"><span class="ic">📖</span>Leituras em andamento</button>
-    <button class="atalho-btn" data-go="pesquisa" type="button"><span class="ic">🔎</span>Pesquisa</button>
+    <button class="atalho-btn" data-go="biblioteca" type="button"><span class="ic"><svg class="ico" aria-hidden="true"><use href="#i-library"/></svg></span>Biblioteca</button>
+    <button class="atalho-btn" data-go="desejos" type="button"><span class="ic"><svg class="ico" aria-hidden="true"><use href="#i-heart"/></svg></span>Lista de desejos</button>
+    <button class="atalho-btn" data-go="leituras" type="button"><span class="ic"><svg class="ico" aria-hidden="true"><use href="#i-book-open"/></svg></span>Leituras em andamento</button>
+    <button class="atalho-btn" data-go="pesquisa" type="button"><span class="ic"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg></span>Pesquisa</button>
   </section>
 
   <!-- ================= BIBLIOTECA ================= -->
@@ -515,7 +427,7 @@ header .sub{color:#E6D2D6;}
   <!-- ================= PESQUISA ================= -->
   <section class="view" id="view-pesquisa">
     <h2 class="section-title">Pesquisa</h2>
-    <div class="pq-busca" id="pq-busca"><input type="text" id="pq-q" placeholder="Título, subtítulo, autor ou personagem" autocomplete="off"><button class="pq-x" id="pq-x" type="button" aria-label="Limpar">✕</button></div>
+    <div class="pq-busca" id="pq-busca"><input type="text" id="pq-q" placeholder="Título, subtítulo, autor ou personagem" autocomplete="off"><button class="pq-x" id="pq-x" type="button" aria-label="Limpar"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg></button></div>
     <div class="pq-rot">Visões</div>
     <div class="pq-chips" id="pq-visoes"></div>
     <div class="pq-acoes" id="pq-barra"></div>
@@ -526,18 +438,18 @@ header .sub{color:#E6D2D6;}
   <!-- ================= MAIS ================= -->
   <section class="view" id="view-mais">
     <h2 class="section-title">Mais</h2>
-    <button class="btn btn-outline btn-block" id="btnGoInicio" type="button" style="margin-bottom:10px;text-align:left">🏠 Tela de atalhos</button>
-    <button class="btn btn-outline btn-block" id="btnGoAutores" type="button" style="margin-bottom:10px;text-align:left">✍️ Autores</button>
-    <button class="btn btn-outline btn-block" id="btnGoVisoes" type="button" style="margin-bottom:10px;text-align:left">🔖 Visões e filtros salvos</button>
-    <button class="btn btn-outline btn-block" id="btnGoCategorias" type="button" style="margin-bottom:10px;text-align:left">🏷️ Categorias de livros</button>
-    <button class="btn btn-outline btn-block" id="btnGoLocais" type="button" style="margin-bottom:10px;text-align:left">📍 Locais (onde vi os preços)</button>
-    <button class="btn btn-outline btn-block" id="btnGoExportar" type="button" style="margin-bottom:10px;text-align:left">📤 Backup e restauração</button>
-    <button class="btn btn-outline btn-block" id="btnGoConfiguracoes" type="button" style="text-align:left">⚙️ Configurações</button>
+    <button class="mais-item" id="btnGoInicio" type="button"><svg class="ico" aria-hidden="true"><use href="#i-home"/></svg><span>Tela de atalhos</span><svg class="ico chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+    <button class="mais-item" id="btnGoAutores" type="button"><svg class="ico" aria-hidden="true"><use href="#i-pen"/></svg><span>Autores</span><svg class="ico chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+    <button class="mais-item" id="btnGoVisoes" type="button"><svg class="ico" aria-hidden="true"><use href="#i-bookmark"/></svg><span>Visões e filtros salvos</span><svg class="ico chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+    <button class="mais-item" id="btnGoCategorias" type="button"><svg class="ico" aria-hidden="true"><use href="#i-tag"/></svg><span>Categorias de livros</span><svg class="ico chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+    <button class="mais-item" id="btnGoLocais" type="button"><svg class="ico" aria-hidden="true"><use href="#i-pin"/></svg><span>Locais (onde vi os preços)</span><svg class="ico chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+    <button class="mais-item" id="btnGoExportar" type="button"><svg class="ico" aria-hidden="true"><use href="#i-download"/></svg><span>Backup e restauração</span><svg class="ico chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
+    <button class="mais-item" id="btnGoConfiguracoes" type="button"><svg class="ico" aria-hidden="true"><use href="#i-sliders"/></svg><span>Configurações</span><svg class="ico chev" aria-hidden="true"><use href="#i-chevron-right"/></svg></button>
   </section>
 
   <!-- ================= AUTORES ================= -->
   <section class="view" id="view-autores">
-    <button class="btn btn-outline btn-sm" id="btnVoltarMaisAutores" type="button" style="margin-bottom:12px">← Voltar</button>
+    <button class="btn btn-outline btn-sm" id="btnVoltarMaisAutores" type="button" style="margin-bottom:12px"><svg class="ico" aria-hidden="true"><use href="#i-arrow-left"/></svg>Voltar</button>
     <h2 class="section-title">Autores</h2>
     <p class="hint" style="margin-top:0;margin-bottom:10px">Toque no nome para ver os livros do autor. Autores novos também podem ser criados direto no cadastro do livro.</p>
     <div id="autores-lista"></div>
@@ -546,7 +458,7 @@ header .sub{color:#E6D2D6;}
 
   <!-- ================= VISÕES ================= -->
   <section class="view" id="view-visoes">
-    <button class="btn btn-outline btn-sm" id="btnVoltarMaisVisoes" type="button" style="margin-bottom:12px">← Voltar</button>
+    <button class="btn btn-outline btn-sm" id="btnVoltarMaisVisoes" type="button" style="margin-bottom:12px"><svg class="ico" aria-hidden="true"><use href="#i-arrow-left"/></svg>Voltar</button>
     <h2 class="section-title">Visões e filtros salvos</h2>
     <p class="hint" style="margin-top:0;margin-bottom:10px">Combinações de filtros que aparecem na aba Pesquisa. Toque no nome para usar. Para criar uma nova, monte os filtros na Pesquisa e toque em “Salvar como visão”.</p>
     <div id="visoes-lista"></div>
@@ -555,7 +467,7 @@ header .sub{color:#E6D2D6;}
 
   <!-- ================= LOCAIS ================= -->
   <section class="view" id="view-locais">
-    <button class="btn btn-outline btn-sm" id="btnVoltarMaisLocais" type="button" style="margin-bottom:12px">← Voltar</button>
+    <button class="btn btn-outline btn-sm" id="btnVoltarMaisLocais" type="button" style="margin-bottom:12px"><svg class="ico" aria-hidden="true"><use href="#i-arrow-left"/></svg>Voltar</button>
     <h2 class="section-title">Locais</h2>
     <p class="hint" style="margin-top:0;margin-bottom:10px">Lojas, livrarias ou sites onde você viu ou pagou o preço de um livro. Toque num local para editar.</p>
     <div id="locais-lista"></div>
@@ -564,7 +476,7 @@ header .sub{color:#E6D2D6;}
 
   <!-- ================= CATEGORIAS DE LIVROS ================= -->
   <section class="view" id="view-categorias">
-    <button class="btn btn-outline btn-sm" id="btnVoltarMaisCats" type="button" style="margin-bottom:12px">← Voltar</button>
+    <button class="btn btn-outline btn-sm" id="btnVoltarMaisCats" type="button" style="margin-bottom:12px"><svg class="ico" aria-hidden="true"><use href="#i-arrow-left"/></svg>Voltar</button>
     <h2 class="section-title">Categorias de livros</h2>
     <p class="hint" style="margin-top:0;margin-bottom:10px">Gêneros, temas ou o critério que você preferir. A categoria do livro é opcional.</p>
     <div id="cats-lista"></div>
@@ -573,7 +485,7 @@ header .sub{color:#E6D2D6;}
 
   <!-- ================= BACKUP ================= -->
   <section class="view" id="view-exportar">
-    <button class="btn btn-outline btn-sm" id="btnVoltarMaisExportar" type="button" style="margin-bottom:12px">← Voltar</button>
+    <button class="btn btn-outline btn-sm" id="btnVoltarMaisExportar" type="button" style="margin-bottom:12px"><svg class="ico" aria-hidden="true"><use href="#i-arrow-left"/></svg>Voltar</button>
     <h2 class="section-title">Backup completo (.json)</h2>
     <p class="hint">Guarda tudo: livros, autores, categorias, leituras, anotações, personagens, preços, capas, configurações e visões. Serve também para levar os dados a outro aparelho.</p>
     <button class="btn btn-accent btn-block" id="btnExportJson" type="button">Exportar backup completo (.json)</button>
@@ -591,7 +503,7 @@ header .sub{color:#E6D2D6;}
 
   <!-- ================= CONFIGURAÇÕES ================= -->
   <section class="view" id="view-configuracoes">
-    <button class="btn btn-outline btn-sm" id="btnVoltarMaisConfig" type="button" style="margin-bottom:12px">← Voltar</button>
+    <button class="btn btn-outline btn-sm" id="btnVoltarMaisConfig" type="button" style="margin-bottom:12px"><svg class="ico" aria-hidden="true"><use href="#i-arrow-left"/></svg>Voltar</button>
     <h2 class="section-title">Configurações</h2>
 
     <label>Página inicial</label>
@@ -608,8 +520,8 @@ header .sub{color:#E6D2D6;}
 
     <label>Tema</label>
     <div class="grid2">
-      <button class="btn btn-outline btn-sm cfg-theme-btn" id="cfg-theme-light" type="button">☀️ Claro</button>
-      <button class="btn btn-outline btn-sm cfg-theme-btn" id="cfg-theme-dark" type="button">🌙 Escuro</button>
+      <button class="btn btn-outline btn-sm cfg-theme-btn" id="cfg-theme-light" type="button"><svg class="ico" aria-hidden="true"><use href="#i-sun"/></svg>Claro</button>
+      <button class="btn btn-outline btn-sm cfg-theme-btn" id="cfg-theme-dark" type="button"><svg class="ico" aria-hidden="true"><use href="#i-moon"/></svg>Escuro</button>
     </div>
   </section>
 
@@ -618,11 +530,11 @@ header .sub{color:#E6D2D6;}
 <button class="fab" id="fabAdd" style="display:none">+</button>
 
 <nav class="tabs">
-  <button class="tab-btn" data-view="biblioteca"><span class="ic">📚</span>Biblioteca</button>
-  <button class="tab-btn" data-view="desejos"><span class="ic">🎁</span>Desejos</button>
-  <button class="tab-btn" data-view="leituras"><span class="ic">📖</span>Leituras</button>
-  <button class="tab-btn" data-view="pesquisa"><span class="ic">🔎</span>Pesquisa</button>
-  <button class="tab-btn" data-view="mais"><span class="ic">⋯</span>Mais</button>
+  <button class="tab-btn" data-view="biblioteca"><span class="ic"><svg class="ico" aria-hidden="true"><use href="#i-library"/></svg></span>Biblioteca</button>
+  <button class="tab-btn" data-view="desejos"><span class="ic"><svg class="ico" aria-hidden="true"><use href="#i-heart"/></svg></span>Desejos</button>
+  <button class="tab-btn" data-view="leituras"><span class="ic"><svg class="ico" aria-hidden="true"><use href="#i-book-open"/></svg></span>Leituras</button>
+  <button class="tab-btn" data-view="pesquisa"><span class="ic"><svg class="ico" aria-hidden="true"><use href="#i-search"/></svg></span>Pesquisa</button>
+  <button class="tab-btn" data-view="mais"><span class="ic"><svg class="ico" aria-hidden="true"><use href="#i-more"/></svg></span>Mais</button>
 </nav>
 
 <div class="overlay" id="overlay">
@@ -645,13 +557,13 @@ header .sub{color:#E6D2D6;}
     <div class="scan-msg" id="scanMsg"></div>
   </div>
   <div class="scan-barra">
-    <button class="scan-btn" id="scanLanterna" type="button" style="display:none">🔦 Luz</button>
-    <button class="scan-btn" id="scanDigitar" type="button">⌨ Digitar à mão</button>
+    <button class="scan-btn" id="scanLanterna" type="button" style="display:none"><svg class="ico" aria-hidden="true"><use href="#i-flash"/></svg>Luz</button>
+    <button class="scan-btn" id="scanDigitar" type="button"><svg class="ico" aria-hidden="true"><use href="#i-keyboard"/></svg>Digitar à mão</button>
   </div>
 </div>
 
 <div class="lightbox" id="lightbox">
-  <button class="lightbox-close" id="lightboxClose">✕</button>
+  <button class="lightbox-close" id="lightboxClose" aria-label="Fechar"><svg class="ico" aria-hidden="true"><use href="#i-x"/></svg></button>
   <img id="lightboxImg" src="">
 </div>
 
@@ -793,6 +705,8 @@ function levenshtein(a,b){
   }
   return dp[m][n];
 }
+/* Ícone do sprite SVG embutido no HTML (símbolos #i-nome); herda a cor do texto. */
+function ico(nome){ return '<svg class="ico" aria-hidden="true"><use href="#i-'+nome+'"/></svg>'; }
 function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 function optionsHTML(list, selectedId, rotulo){
   return list.map(x=>`<option value="${x.id}" ${selectedId!==undefined && x.id===selectedId?'selected':''}>${escapeHtml(rotulo?rotulo(x):x.nome)}</option>`).join('');
@@ -1159,7 +1073,7 @@ function closeLightbox(){
 document.getElementById('lightboxClose').addEventListener('click', closeLightbox);
 lightbox.addEventListener('click', (e)=>{ if(e.target===lightbox) closeLightbox(); });
 document.body.addEventListener('click', (e)=>{
-  const img = e.target.closest('img.thumb, .photo-pick img');
+  const img = e.target.closest('img.det-capa, .photo-pick img');
   if(img && img.src){ e.stopPropagation(); openLightbox(img.src); }
 }, true);
 
@@ -1260,6 +1174,8 @@ function refreshThemeButtons(){
 }
 function applyTheme(theme){
   document.documentElement.classList.toggle('dark', theme==='dark');
+  const mt = document.querySelector('meta[name="theme-color"]');   // cor da barra do sistema acompanha o tema
+  if(mt) mt.setAttribute('content', theme==='dark' ? '#0E0B0D' : '#3A1F27');
   refreshThemeButtons();
 }
 applyTheme(localStorage.getItem(LS_PREFIX+'theme') || 'light');
@@ -1506,7 +1422,7 @@ async function escanearIsbn(){
   if(_scanResolve){ const r=_scanResolve; _scanResolve=null; r(null); }
   const fim = new Promise(res=>{ _scanResolve = res; });
   scanMsg.textContent = 'Abrindo a câmera…';
-  scanLanterna.style.display = 'none'; scanLanterna.textContent = '🔦 Luz';
+  scanLanterna.style.display = 'none'; scanLanterna.innerHTML = ico('flash') + 'Luz';
   scanOverlay.classList.add('active'); pushModalHistory();
   const meuId = ++_scanId;
   let stream;
@@ -1534,7 +1450,7 @@ async function escanearIsbn(){
 scanLanterna.addEventListener('click', async ()=>{
   const tr = _scanStream && _scanStream.getVideoTracks()[0]; if(!tr) return;
   const quer = !_scanLuz;
-  try{ await tr.applyConstraints({advanced:[{torch:quer}]}); _scanLuz = quer; scanLanterna.textContent = quer ? '🔦 Apagar luz' : '🔦 Luz'; }catch(e){}
+  try{ await tr.applyConstraints({advanced:[{torch:quer}]}); _scanLuz = quer; scanLanterna.innerHTML = ico('flash') + (quer ? 'Apagar luz' : 'Luz'); }catch(e){}
 });
 document.getElementById('scanDigitar').addEventListener('click', ()=> concluirScan(''));
 document.addEventListener('visibilitychange', ()=>{ if(document.hidden) fecharScanner(); });   // app em segundo plano: solta a câmera
@@ -1578,7 +1494,7 @@ function abrirRevisaoIsbn(res, atual, aoAplicar){
 }
 
 function livroItemHTML(l){
-  const capa = l.capa ? `<img class="capa" src="${l.capa}" alt="">` : `<div class="capa capa-ph">📕</div>`;
+  const capa = l.capa ? `<img class="capa" src="${l.capa}" alt="">` : `<div class="capa capa-ph">${ico('book')}</div>`;
   const tit = `<div class="livro-tit">${escapeHtml(l.titulo)}</div>`;
   const pct = percentualLivro(l.id);
   const pctHtml = pct==null ? '' : `<div class="livro-pct"><span class="pct-barra"><i style="width:${pct}%"></i></span><b>${pct}%</b></div>`;
@@ -1592,7 +1508,7 @@ function renderLivros(aba){
     return;
   }
   el.innerHTML = `<div class="livros-barra"><span class="hint">${lista.length} ${lista.length===1?'livro':'livros'}</span>`
-    + `<button class="btn btn-outline btn-xs" type="button" data-act="layout">${layoutTela==='grade' ? '☰ Lista' : '▦ Grade'}</button></div>`
+    + `<button class="btn btn-outline btn-xs" type="button" data-act="layout">${layoutTela==='grade' ? ico('list')+'Lista' : ico('grid')+'Grade'}</button></div>`
     + `<div class="${layoutTela==='grade' ? 'livros-grade' : 'livros-lista'}">${lista.map(livroItemHTML).join('')}</div>`;
   el.querySelector('[data-act="layout"]').addEventListener('click', ()=>{ layoutTela = layoutTela==='grade' ? 'lista' : 'grade'; renderLivros(aba); });
   el.querySelectorAll('.livro-item').forEach(it=> it.addEventListener('click', ()=> abrirLivro(Number(it.dataset.id))));
@@ -1605,7 +1521,7 @@ function kv(k, v){ return v ? `<div class="det-kv"><div class="k">${k}</div><div
 function abrirLivro(id){
   const l = LIVROS.find(x=>x.id===id);
   if(!l){ closeSheet(); return; }
-  const capa = l.capa ? `<img class="det-capa" src="${l.capa}" alt="">` : `<div class="det-capa-ph">📕</div>`;
+  const capa = l.capa ? `<img class="det-capa" src="${l.capa}" alt="">` : `<div class="det-capa-ph">${ico('book')}</div>`;
   const sit = SITUACOES[l.situacao] || 'Próprio';
   openSheet(`<div class="leitura">
     <div class="det-topo">${capa}<div style="min-width:0">
@@ -1625,7 +1541,7 @@ function abrirLivro(id){
     ${minhasLeiturasHTML(l)}
     ${precosSecaoHTML(l)}
   </div>
-  ${l.situacao==='desejo' ? '<button class="btn btn-accent btn-block" id="lv-comprei" type="button" style="margin-top:14px">✓ Marcar como comprado</button>' : ''}
+  ${l.situacao==='desejo' ? '<button class="btn btn-accent btn-block" id="lv-comprei" type="button" style="margin-top:14px">' + ico('check') + 'Marcar como comprado</button>' : ''}
   <div class="sheet-actions">
     <button class="btn btn-outline" id="lv-close" type="button" style="flex:1">Fechar</button>
     <button class="btn btn-accent" id="lv-edit" type="button" style="flex:1">Editar</button>
@@ -1652,7 +1568,7 @@ function abrirFormLivro(id, situacaoInicial){
   let capa = v.capa || '';
   let autorIds = (v.autorIds||[]).filter(a=> AUTORES.some(x=>x.id===a));
   openSheet(`<h3>${l ? 'Editar livro' : 'Novo livro'}</h3>
-    <div class="tr-form">
+    <div class="form-compacto">
     <label>Título *</label><input type="text" id="lv-titulo" value="${escapeHtml(v.titulo||'')}" autocomplete="off">
     <label>Subtítulo</label><input type="text" id="lv-subtitulo" value="${escapeHtml(v.subtitulo||'')}" autocomplete="off">
     <label>Autores</label>
@@ -1671,7 +1587,7 @@ function abrirFormLivro(id, situacaoInicial){
     <label>Subcategoria</label>
     <div class="sel-linha"><select id="lv-sub"></select><button class="btn btn-outline btn-sm" id="lv-sub-novo" type="button">+</button></div>
     <label>ISBN</label>
-    <div class="isbn-linha"><input type="text" id="lv-isbn" inputmode="numeric" value="${escapeHtml(v.isbn||'')}" autocomplete="off" placeholder="10 ou 13 números"><button class="btn btn-outline btn-sm" id="lv-isbn-scan" type="button" aria-label="Ler o código de barras com a câmera" title="Ler o código de barras com a câmera">📷</button><button class="btn btn-outline btn-sm" id="lv-isbn-busca" type="button">🔍 Buscar</button></div>
+    <div class="isbn-linha"><input type="text" id="lv-isbn" inputmode="numeric" value="${escapeHtml(v.isbn||'')}" autocomplete="off" placeholder="10 ou 13 números"><button class="btn btn-outline btn-sm" id="lv-isbn-scan" type="button" aria-label="Ler o código de barras com a câmera" title="Ler o código de barras com a câmera">${ico('camera')}</button><button class="btn btn-outline btn-sm" id="lv-isbn-busca" type="button">${ico('search')}Buscar</button></div>
     <div class="aviso-isbn" id="lv-isbn-aviso"></div>
     <label>Páginas</label><input type="number" id="lv-paginas" inputmode="numeric" min="1" value="${v.paginas||''}">
     <label>Capa</label>
@@ -1699,7 +1615,7 @@ function abrirFormLivro(id, situacaoInicial){
     $('lv-sub-novo').disabled = !catId;
   };
   const pintaCapa = ()=>{
-    $('lv-capa-prev').innerHTML = capa ? `<img src="${capa}" alt="" style="width:64px;height:96px">` : '<div class="ph" style="height:96px">📕</div>';
+    $('lv-capa-prev').innerHTML = capa ? `<img src="${capa}" alt="" style="width:64px;height:96px">` : '<div class="ph" style="height:96px">' + ico('book') + '</div>';
     $('lv-capa-del').style.display = capa ? 'block' : 'none';
   };
   atualizaEmp(); preencheCats(v.categoriaId, v.subcategoriaId); pintaCapa();
@@ -1709,7 +1625,7 @@ function abrirFormLivro(id, situacaoInicial){
   const buscaEl = $('lv-autor-busca'), sugEl = $('lv-autor-sug');
   const marcaAlt = ()=>{ camadaMain.dirty = true; camadaMain.salvando = false; };
   const pintaAutores = ()=>{
-    $('lv-autores-chips').innerHTML = autorIds.map(a=>`<span class="chip"><span>${escapeHtml(nomeAutor(a))}</span><button type="button" data-rm="${a}" aria-label="Remover autor">✕</button></span>`).join('');
+    $('lv-autores-chips').innerHTML = autorIds.map(a=>`<span class="chip"><span>${escapeHtml(nomeAutor(a))}</span><button type="button" data-rm="${a}" aria-label="Remover autor">${ico('x')}</button></span>`).join('');
   };
   const pintaSugestoes = ()=>{
     const q = limpaNome(buscaEl.value), nq = normalizeNome(q);
@@ -1753,7 +1669,7 @@ function abrirFormLivro(id, situacaoInicial){
   const isbnEl = $('lv-isbn');
   const avisoIsbn = ()=>{
     const d = livroComIsbn(isbnEl.value, l ? l.id : undefined);
-    $('lv-isbn-aviso').textContent = d ? `⚠ Já existe um livro com este ISBN: “${d.titulo}”.` : '';
+    $('lv-isbn-aviso').innerHTML = d ? `${ico('alert')}Já existe um livro com este ISBN: “${escapeHtml(d.titulo)}”.` : '';
   };
   isbnEl.addEventListener('input', avisoIsbn);
   avisoIsbn();
@@ -1792,7 +1708,7 @@ function abrirFormLivro(id, situacaoInicial){
         autores: autorIds.map(nomeAutor), paginas: $('lv-paginas').value,
         descricao: $('lv-descricao').value, capa
       }, aplicaEncontrados);
-    } finally { btnBusca.disabled = false; btnBusca.textContent = '🔍 Buscar'; }
+    } finally { btnBusca.disabled = false; btnBusca.innerHTML = ico('search') + 'Buscar'; }
   });
   /* Scanner: lê o código pela câmera, preenche o ISBN e já abre a busca online (que só mostra a revisão; nada grava sem Salvar) */
   $('lv-isbn-scan').addEventListener('click', async ()=>{
@@ -1921,7 +1837,7 @@ function minhasLeiturasHTML(l){
   return `<div class="det-sec" id="lv-leituras"><div class="det-sec-t">Minhas leituras</div>`
     + and.map(x=>linha(x, true)).join('') + fin.map(x=>linha(x, false)).join('')
     + (todas.length ? '' : '<p class="hint" style="margin-top:0">Nenhuma leitura ainda.</p>')
-    + `<button class="btn ${and.length ? 'btn-outline' : 'btn-accent'} btn-block" id="lv-iniciar" type="button">▶ Iniciar ${todas.length ? 'nova ' : ''}leitura</button></div>`;
+    + `<button class="btn ${and.length ? 'btn-outline' : 'btn-accent'} btn-block" id="lv-iniciar" type="button">${ico('play')}Iniciar ${todas.length ? 'nova ' : ''}leitura</button></div>`;
 }
 
 async function iniciarLeitura(livroId){
@@ -1942,7 +1858,7 @@ function abrirLeitura(id, origem){
   const pag = paginaAtualLeitura(id), pct = percentualLeitura(lt, l);
   const regs = progressosDaLeitura(id), ult = regs[regs.length-1];
   const num = leiturasDoLivro(l.id).indexOf(lt) + 1;
-  openSheet(`<button class="btn btn-outline btn-sm" id="lt-close" type="button" style="margin-bottom:12px">← ${origem==='livro' ? 'Voltar ao livro' : 'Fechar'}</button>
+  openSheet(`<button class="btn btn-outline btn-sm" id="lt-close" type="button" style="margin-bottom:12px">${ico('arrow-left')}${origem==='livro' ? 'Voltar ao livro' : 'Fechar'}</button>
     <div class="leitura">
       <h3 class="det-tit">${escapeHtml(l.titulo)}</h3>
       <div style="margin-top:8px"><span class="badge ${and ? 'badge-bad' : 'badge-good'}">${and ? 'Em andamento' : 'Finalizada'}</span><span class="hint">Leitura ${num}</span></div>
@@ -1964,7 +1880,7 @@ function abrirLeitura(id, origem){
         <div class="det-sec-t">Histórico</div>
         <div id="lt-hist"></div>
       </div>
-      ${and ? '<button class="btn btn-outline btn-block" id="lt-finalizar" type="button" style="margin-top:16px">✓ Finalizar leitura</button>' : '<button class="btn btn-outline btn-block" id="lt-reabrir" type="button" style="margin-top:16px">↺ Reabrir leitura</button>'}
+      ${and ? '<button class="btn btn-outline btn-block" id="lt-finalizar" type="button" style="margin-top:16px">' + ico('check') + 'Finalizar leitura</button>' : '<button class="btn btn-outline btn-block" id="lt-reabrir" type="button" style="margin-top:16px">' + ico('undo') + 'Reabrir leitura</button>'}
       <button class="btn btn-danger btn-block" id="lt-del" type="button" style="margin-top:10px">Excluir leitura</button>
       </div>
       <div id="lt-pane-anotacoes" style="display:none"></div>
@@ -2174,7 +2090,7 @@ function renderLocais(){
   if(!LOCAIS.length){ el.innerHTML = '<div class="vazio" style="margin-bottom:12px">Nenhum local ainda.<br>Locais também podem ser criados direto ao registrar um preço.</div>'; return; }
   el.innerHTML = LOCAIS.map(x=>{
     const n = PRECOS.filter(p=>p.localId===x.id).length;
-    return `<div class="cat-bloco" data-loc="${x.id}" style="cursor:pointer"><div class="cat-linha"><span class="nome">📍 ${escapeHtml(x.nome)} <small>(${n} ${n===1?'preço':'preços'})</small></span></div>`
+    return `<div class="cat-bloco" data-loc="${x.id}" style="cursor:pointer"><div class="cat-linha"><span class="nome">${ico('pin')}${escapeHtml(x.nome)} <small>(${n} ${n===1?'preço':'preços'})</small></span></div>`
       + (x.obs ? `<div class="meta" style="margin-top:4px;white-space:pre-wrap">${escapeHtml(x.obs)}</div>` : '') + `</div>`;
   }).join('');
   el.querySelectorAll('[data-loc]').forEach(c=> c.addEventListener('click', ()=> abrirFormLocal(Number(c.dataset.loc))));
@@ -2459,7 +2375,7 @@ function abrirFormAnotacao(leituraId, aid, origem){
   const efetivos = ()=> { const m = mencionados(); return pids.filter(x=>!m.includes(x)).concat(m); };
   const chips = ()=>{
     const m = mencionados();
-    $('an-chips').innerHTML = pids.filter(x=>!m.includes(x)).map(pid=>`<span class="chip"><span>${escapeHtml(nomePersonagem(pid))}</span><button type="button" data-rm="${pid}" aria-label="Remover personagem">✕</button></span>`).join('')
+    $('an-chips').innerHTML = pids.filter(x=>!m.includes(x)).map(pid=>`<span class="chip"><span>${escapeHtml(nomePersonagem(pid))}</span><button type="button" data-rm="${pid}" aria-label="Remover personagem">${ico('x')}</button></span>`).join('')
       + m.map(pid=>`<span class="chip sem-x" title="Citada no texto com @"><span>@${escapeHtml(nomePersonagem(pid))}</span></span>`).join('');
   };
   chips();
@@ -2706,7 +2622,7 @@ function renderLeituras(){
     return;
   }
   el.innerHTML = lista.map(({lt,l})=>{
-    const capa = l.capa ? `<img class="capa" src="${l.capa}" alt="">` : '<div class="capa capa-ph">📕</div>';
+    const capa = l.capa ? `<img class="capa" src="${l.capa}" alt="">` : '<div class="capa capa-ph">' + ico('book') + '</div>';
     return `<div class="leit-item" data-lt="${lt.id}">${capa}<div class="corpo"><div class="tit">${escapeHtml(l.titulo)}</div>`
       + `<div class="meta">${textoProgresso(lt, l)}</div>${barraPct(percentualLeitura(lt, l)) ? `<div style="margin-top:6px">${barraPct(percentualLeitura(lt, l))}</div>` : ''}`
       + `<div class="meta">Iniciada em ${fmtDataCurta(lt.inicio)}</div></div></div>`;
@@ -2938,7 +2854,7 @@ function pqDesenharResultados(){
   if(!LIVROS.length){ el.innerHTML = '<div class="vazio">Nenhum livro cadastrado ainda.</div>'; return; }
   if(!lista.length){ el.innerHTML = '<div class="vazio">Nenhum livro encontrado com esta pesquisa e estes filtros.</div>'; return; }
   el.innerHTML = `<div class="livros-barra"><span class="hint">${lista.length} ${lista.length===1?'livro':'livros'}</span>`
-    + `<button class="btn btn-outline btn-xs" type="button" data-act="layout">${layoutTela==='grade' ? '☰ Lista' : '▦ Grade'}</button></div>`
+    + `<button class="btn btn-outline btn-xs" type="button" data-act="layout">${layoutTela==='grade' ? ico('list')+'Lista' : ico('grid')+'Grade'}</button></div>`
     + `<div class="${layoutTela==='grade' ? 'livros-grade' : 'livros-lista'}">${lista.map(livroItemHTML).join('')}</div>`;
 }
 function renderPesquisa(){
@@ -2949,10 +2865,10 @@ function renderPesquisa(){
     ? VISOES.map(v=>`<button class="pq-chip ${ativa && ativa.id===v.id ? 'on' : ''}" type="button" data-v="${v.id}">${escapeHtml(v.nome)}</button>`).join('')
     : '<span class="hint" style="margin:0">Nenhuma visão salva. Monte filtros e toque em “Salvar como visão”.</span>';
   const base = _visaoAtiva ? VISOES.find(v=>v.id===_visaoAtiva) : null;
-  let barra = `<button class="btn ${_pqAberto?'btn-accent':'btn-outline'} btn-sm" type="button" data-act="painel">⚙ Filtros${n?` (${n})`:''}</button>`;
-  if(n && !ativa) barra += `<button class="btn btn-outline btn-sm" type="button" data-act="salvar">💾 Salvar como visão</button>`;
-  if(n && base && !filtroIgual(base.filtros, f)) barra += `<button class="btn btn-outline btn-sm" type="button" data-act="atualizar">↻ Atualizar “${escapeHtml(base.nome)}”</button>`;
-  if(n) barra += `<button class="btn btn-outline btn-sm" type="button" data-act="limpar">✕ Limpar filtros</button>`;
+  let barra = `<button class="btn ${_pqAberto?'btn-accent':'btn-outline'} btn-sm" type="button" data-act="painel">${ico('sliders')}Filtros${n?` (${n})`:''}</button>`;
+  if(n && !ativa) barra += `<button class="btn btn-outline btn-sm" type="button" data-act="salvar">${ico('save')}Salvar como visão</button>`;
+  if(n && base && !filtroIgual(base.filtros, f)) barra += `<button class="btn btn-outline btn-sm" type="button" data-act="atualizar">${ico('refresh')}Atualizar “${escapeHtml(base.nome)}”</button>`;
+  if(n) barra += `<button class="btn btn-outline btn-sm" type="button" data-act="limpar">${ico('x')}Limpar filtros</button>`;
   document.getElementById('pq-barra').innerHTML = barra;
   const painel = document.getElementById('pq-painel');
   if(!_pqAberto){ painel.innerHTML = ''; }
@@ -3043,8 +2959,8 @@ function renderVisoes(){
     <div class="cat-linha"><span class="nome clicavel" data-act="usar" data-id="${v.id}">${escapeHtml(v.nome)}${v.original?' <small>(original)</small>':''}</span></div>
     <div class="vs-desc">${escapeHtml(descreverFiltro(v.filtros))}</div>
     <div class="vs-bts">
-      <button class="btn btn-outline btn-xs" data-act="sobe" data-id="${v.id}" type="button" ${i===0?'disabled':''}>▲</button>
-      <button class="btn btn-outline btn-xs" data-act="desce" data-id="${v.id}" type="button" ${i===VISOES.length-1?'disabled':''}>▼</button>
+      <button class="btn btn-outline btn-xs" data-act="sobe" data-id="${v.id}" type="button" ${i===0?'disabled':''}>${ico('up')}</button>
+      <button class="btn btn-outline btn-xs" data-act="desce" data-id="${v.id}" type="button" ${i===VISOES.length-1?'disabled':''}>${ico('down')}</button>
       <button class="btn btn-outline btn-xs" data-act="ren" data-id="${v.id}" type="button">Renomear</button>
       <button class="btn btn-danger btn-xs" data-act="del" data-id="${v.id}" type="button">Excluir</button>
     </div></div>`).join('');
@@ -3190,7 +3106,7 @@ document.getElementById('btnImportJson').addEventListener('click', async ()=>{
    ============================================================ */
 fillConfiguracoesForm();
 /* ---- PWA: versão, armazenamento persistente e service worker ---- */
-const APP_VERSION = 'v1_11';
+const APP_VERSION = 'v1_12';
 document.getElementById('appVersaoTxt').textContent = APP_VERSION;
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persist().then(ok=>{

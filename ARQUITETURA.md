@@ -1,6 +1,6 @@
 # ARQUITETURA.md — App "Livros"
 
-Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_11 em 2026-11-05; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
+Referência para quem for mexer no código (Claude ou pessoa). Ler inteiro antes de começar uma versão. Conferido contra o código da v1_12 em 2026-11-06; se algo divergir do `index.html`, o código vale e este documento deve ser corrigido no mesmo commit.
 
 O escopo funcional está em `ESPECIFICACAO.md`; a ordem de entrega e o andamento estão em `PLANO.md`.
 
@@ -18,7 +18,7 @@ App pessoal e offline de biblioteca e diário de leitura (livros, autores, categ
 
 | Arquivo | Função |
 |---|---|
-| `index.html` | Todo o app (HTML + CSS + JS). Manter único. |
+| `index.html` | Todo o app (HTML + CSS + JS + sprite de ícones). Manter único. |
 | `sw.js` | Service worker (cache offline, rede com timeout de 3 s). |
 | `manifest.webmanifest` | Manifesto do PWA. |
 | `icon-192.png`, `icon-512.png`, `icon-maskable-512.png` | Ícones. |
@@ -190,12 +190,17 @@ Configurações: `localStorage` `livros_cfg_*`, lidas por `loadConfig()` (padrõ
 - **Alerta de 7 dias** (novo; o Preços não tem): `renderAvisoBackup()` mostra faixa no topo se há dados e o último backup (ou o primeiro uso, se nunca houve) tem 7 dias ou mais. Sai assim que o backup é feito.
 - `navigator.storage.persist()` ativo.
 
-## 9. Padrões visuais
+## 9. Padrões visuais (acabamento da v1_12)
 
-- CSS herdado do Preços (tokens `--paper`, `--card`, `--ink`, `--accent`, `--line`...), com identidade própria sobreposta no final do `<style>` (bordô `#7A2E3A`, dourado no logo). Modo escuro: classe `html.dark`.
-- Tipografia dos modos de leitura: 3 estilos — título `.view-heading`, texto `.leitura` (14 px), nota `.view-nota`/`.hint`/`.obs` (12 px cinza).
+- **Tokens únicos** no início do `<style>` (sem camada herdada sobreposta): `--paper`, `--card`, `--ink`, `--ink-soft`, `--accent` (bordô `#7A2E3A`; rosa no escuro), `--accent-soft`, `--on-accent` (texto sobre `--accent`: branco no claro, escuro no tema escuro), `--line`, `--good`, `--danger`, e da barra do topo `--bar`, `--bar-ink`, `--bar-soft`. Modo escuro: classe `html.dark` redefine os mesmos tokens. **Nunca usar `#fff` sobre `--accent`: usar `--on-accent`.**
+- **Tipografia:** títulos de livro/leitura/janelas e o nome "Livros" usam `--serif` (Georgia e similares do sistema; funciona offline). Texto corrido segue a fonte do sistema.
+- **Ícones:** sprite SVG embutido no início do `<body>` (símbolos `#i-nome`, traço `currentColor`, estilo de linha). Em HTML estático: `<svg class="ico"><use href="#i-nome"/></svg>`; no JS: `ico('nome')`. Para um ícone novo, acrescentar o `<symbol>` ao sprite. **Não usar emoji como ícone.** Botões com ícone + texto são `inline-flex` com `gap`; botões só com ícone (câmera, ▲▼, ✕) funcionam do mesmo jeito. O logo do cabeçalho é o símbolo `#i-logo` (livro aberto com marcador dourado, igual ao ícone do app).
+- **Barra inferior:** ícone dentro de uma "pílula" (`.ic`) que ganha `--accent-soft` na aba ativa. **Mais** e **Atalhos** usam cartões com ícone (`.mais-item`, `.atalho-btn`).
+- **Capa ausente:** degradê `--accent-soft`→`--paper-alt` com o ícone de livro (`.capa-ph`, `.det-capa-ph`).
+- A cor do navegador/barra do sistema (`<meta name="theme-color">`) acompanha o tema em `applyTheme`.
+- Tipografia dos modos de leitura: 3 estilos — título `.det-sec-t`, texto `.leitura` (14 px), nota `.hint`/`.obs` (12 px cinza).
 - Listagens de livros mostram **só capa, título e % de leitura**; autor, categoria e status ficam no detalhe e nos filtros.
-- Há CSS herdado sem uso (receitas etc.); pode ser removido aos poucos.
+- **CSS herdado do Preços removido na v1_12** (receitas, preparos, transformações, tabelas de rodadas, toast, "voltar ao topo", cartões `.card`, duplicatas, ajuda "?", seletor de ingrediente). Antes de apagar regra, conferir com busca no HTML/JS (classe montada por string também conta). `.tr-form` foi renomeada para `.form-compacto`.
 
 ## 10. Reaproveitado do Preços × novo
 
