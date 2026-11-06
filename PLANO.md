@@ -14,19 +14,14 @@ Uma fase = uma versão = uma sessão (cabe no limite do plano gratuito). A ordem
 | v1_08 | Personagens e anotações (abas da leitura, todas / por personagem, página, data editável) | publicada |
 | v1_09 | `@menções` em anotações (autocompletar, confirmar criação, vínculos reais, exclusão com aviso) | publicada |
 | v1_10 | Preços dos livros (adaptado do Preços: preço, data, local, pago × observado, histórico, gráfico); inclui Mais → Locais | publicada |
-| v1_11 | Pesquisa geral, filtros e visões salvas (um único mecanismo; feita numa sessão só) | feita; aguardando validação e "pode publicar" |
+| v1_11 | Pesquisa geral, filtros e visões salvas (um único mecanismo; feita numa sessão só) | publicada |
 | v1_12 | Acabamento: identidade visual, ícones, limpeza de CSS herdado, revisão contra a especificação | |
 
 ## Pontos a validar no aparelho do usuário
 
-- v1_11: aba Pesquisa (texto, filtros, visões, salvar/atualizar) e Mais → Visões e filtros salvos (reordenar, renomear, excluir, restaurar originais).
-- v1_06: leituras (iniciar, registrar, finalizar, aba Leituras) ainda a validar no celular.
-- v1_10: seção Preços no detalhe do livro (registrar, editar, excluir; Paguei × Observado; resumo; lista/gráfico) e Mais → Locais.
-- v1_09: digitar @ na anotação (sugestões, tocar para inserir, cadastrar personagem nova com confirmação, recusar mantém o texto), menções destacadas no cartão, renomear personagem atualiza as menções.
-- v1_08: abas Progresso/Anotações/Personagens; criar anotação com página, data editável e personagens (inclusive criando personagem na hora); filtro por personagem; excluir personagem citada.
-- v1_07: gráfico (regressão), lista com toque para editar/excluir e reabrir leitura.
-- v1_04: **validado no celular pelo usuário em 2026-11-04** (busca online por ISBN real funcionou: APIs respondem ao navegador).
-- v1_05: `BarcodeDetector` funciona no Chrome dele (a sandbox testou com leitor e câmera simulados, não com câmera real); senão, decidir fallback. Conferir também: permissão da câmera, a leitura de um código de verdade e a Luz.
+- v1_06 a v1_10: **validadas pelo usuário em 2026-11-05** (leituras, histórico/reabrir, abas, @menções, preços e locais).
+- v1_11: aba Pesquisa (texto, filtros, visões, salvar/atualizar) e Mais → Visões e filtros salvos (reordenar, renomear, excluir, restaurar originais) ainda a validar no celular.
+- v1_04 (busca online por ISBN real) e v1_05 (scanner): validadas em 2026-11-04.
 
 ## Itens pedidos para versões futuras
 
