@@ -15,12 +15,16 @@ Uma fase = uma versão = uma sessão (cabe no limite do plano gratuito). A ordem
 | v1_09 | `@menções` em anotações (autocompletar, confirmar criação, vínculos reais, exclusão com aviso) | publicada |
 | v1_10 | Preços dos livros (adaptado do Preços: preço, data, local, pago × observado, histórico, gráfico); inclui Mais → Locais | publicada |
 | v1_11 | Pesquisa geral, filtros e visões salvas (um único mecanismo; feita numa sessão só) | publicada |
-| v1_12 | Acabamento: identidade visual (tokens, serifa, logo), ícones SVG no lugar de emojis, limpeza de CSS herdado (~8 KB), revisão contra a especificação | feita; aguardando validação e publicação |
+| v1_12 | Acabamento: identidade visual (tokens, serifa, logo), ícones SVG no lugar de emojis, limpeza de CSS herdado (~8 KB), revisão contra a especificação | publicada |
+| v1_13 | Ajustes pós-acabamento (1/2): botões do livro em ícones (lápis, lixeira, X, + Leitura), contagem de anotações por personagem só da leitura aberta, Desejo sem registro de leitura, cards de preço Médio/Menor/Maior | feita; aguardando validação e publicação |
+| v1_14 | Ajustes pós-acabamento (2/2): telas cheias com menu inferior visível (livro, leitura, formulários) e pilha de telas para o botão voltar do celular | a fazer |
 
 ## Pontos a validar no aparelho do usuário
 
 - v1_06 a v1_10: **validadas pelo usuário em 2026-11-05** (leituras, histórico/reabrir, abas, @menções, preços e locais).
-- v1_12: aparência geral (cabeçalho, barra inferior, Mais, atalhos, capas sem imagem, tema escuro, scanner) e se nada mudou de comportamento nas telas já validadas.
+- v1_11 e v1_12: **validadas pelo usuário em 2026-11-06**.
+- v1_13: botões em ícones no detalhe do livro, + Leitura, contagem por leitura, Desejo e cards de preço a validar.
+- (histórico) v1_12: aparência geral (cabeçalho, barra inferior, Mais, atalhos, capas sem imagem, tema escuro, scanner) e se nada mudou de comportamento nas telas já validadas.
 - v1_11: aba Pesquisa (texto, filtros, visões, salvar/atualizar) e Mais → Visões e filtros salvos (reordenar, renomear, excluir, restaurar originais) ainda a validar no celular.
 - v1_04 (busca online por ISBN real) e v1_05 (scanner): validadas em 2026-11-04.
 

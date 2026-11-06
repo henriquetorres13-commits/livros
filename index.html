@@ -106,6 +106,11 @@ button{font-family:inherit;cursor:pointer;border:none;}
 .btn-sm{padding:7px 11px;font-size:12.5px;border-radius:7px;}
 .btn-xs{padding:4px 9px;font-size:11px;border-radius:6px;}
 .btn-block{width:100%;}
+.btn-ico{width:40px;height:40px;padding:0;display:inline-flex;align-items:center;justify-content:center;border-radius:9px;}
+.btn-ico .ico{width:20px;height:20px;vertical-align:0;}
+.det-barra{display:flex;gap:8px;justify-content:flex-end;margin-bottom:12px;}
+.det-sec-linha{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px;}
+.det-sec-linha .det-sec-t{margin-bottom:0;}
 .btn:disabled{opacity:.45;cursor:default;}
 .fab{position:fixed;right:16px;bottom:78px;width:54px;height:54px;border-radius:50%;background:var(--accent);
   color:var(--on-accent);font-size:28px;display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(0,0,0,.28);z-index:15;}
@@ -384,6 +389,7 @@ nav.tabs button.active .ic{background:var(--accent-soft);}
 <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a.5.5 0 0 0 .76.43l12-7.5a.5.5 0 0 0 0-.86l-12-7.5A.5.5 0 0 0 7 4.5z" fill="currentColor"/></symbol>
 <symbol id="i-undo" viewBox="0 0 24 24"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></symbol>
 <symbol id="i-alert" viewBox="0 0 24 24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+<symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><path d="M10 11v6"/><path d="M14 11v6"/></symbol>
 <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H19a1 1 0 0 1 1 1v18a1 1 0 0 1-1 1H6.5a1 1 0 0 1 0-5H20"/></symbol>
 </svg>
 
@@ -1523,7 +1529,12 @@ function abrirLivro(id){
   if(!l){ closeSheet(); return; }
   const capa = l.capa ? `<img class="det-capa" src="${l.capa}" alt="">` : `<div class="det-capa-ph">${ico('book')}</div>`;
   const sit = SITUACOES[l.situacao] || 'Próprio';
-  openSheet(`<div class="leitura">
+  openSheet(`<div class="det-barra">
+      <button class="btn btn-outline btn-ico" id="lv-edit" type="button" aria-label="Editar livro" title="Editar">${ico('pen')}</button>
+      <button class="btn btn-danger btn-ico" id="lv-del" type="button" aria-label="Excluir livro" title="Excluir">${ico('trash')}</button>
+      <button class="btn btn-outline btn-ico" id="lv-close" type="button" aria-label="Fechar" title="Fechar">${ico('x')}</button>
+    </div>
+    <div class="leitura">
     <div class="det-topo">${capa}<div style="min-width:0">
       <h3 class="det-tit">${escapeHtml(l.titulo)}</h3>
       ${l.subtitulo ? `<div class="det-sub">${escapeHtml(l.subtitulo)}</div>` : ''}
@@ -1542,15 +1553,12 @@ function abrirLivro(id){
     ${precosSecaoHTML(l)}
   </div>
   ${l.situacao==='desejo' ? '<button class="btn btn-accent btn-block" id="lv-comprei" type="button" style="margin-top:14px">' + ico('check') + 'Marcar como comprado</button>' : ''}
-  <div class="sheet-actions">
-    <button class="btn btn-outline" id="lv-close" type="button" style="flex:1">Fechar</button>
-    <button class="btn btn-accent" id="lv-edit" type="button" style="flex:1">Editar</button>
-  </div>
-  <button class="btn btn-danger btn-block" id="lv-del" type="button" style="margin-top:10px">Excluir livro</button>`);
+  `);
   document.getElementById('lv-close').addEventListener('click', ()=> closeSheet());
   document.getElementById('lv-edit').addEventListener('click', ()=> abrirFormLivro(id));
   document.getElementById('lv-del').addEventListener('click', ()=> excluirLivro(id));
-  document.getElementById('lv-iniciar').addEventListener('click', ()=> iniciarLeitura(id));
+  const bi = document.getElementById('lv-iniciar');
+  if(bi) bi.addEventListener('click', ()=> iniciarLeitura(id));
   ligarPrecos(id);
   document.querySelectorAll('#lv-leituras [data-lt]').forEach(el=> el.addEventListener('click', ()=> abrirLeitura(Number(el.dataset.lt), 'livro')));
   const bc = document.getElementById('lv-comprei');
@@ -1834,10 +1842,12 @@ function minhasLeiturasHTML(l){
     return `<div class="leit-linha ${destaque?'destaque':''}" data-lt="${lt.id}"><div class="t">${destaque ? 'Em andamento' : 'Leitura '+(todas.indexOf(lt)+1)}</div>`
       + `<div class="meta">${datas} · ${textoProgresso(lt, l)}</div>${barraPct(percentualLeitura(lt, l))}</div>`;
   };
-  return `<div class="det-sec" id="lv-leituras"><div class="det-sec-t">Minhas leituras</div>`
+  const desejo = l.situacao==='desejo';
+  if(desejo && !todas.length) return '';   // livro que ainda não tenho: sem registro de leitura
+  return `<div class="det-sec" id="lv-leituras"><div class="det-sec-linha"><div class="det-sec-t">Minhas leituras</div>`
+    + (desejo ? '' : `<button class="btn ${and.length ? 'btn-outline' : 'btn-accent'} btn-sm" id="lv-iniciar" type="button">+ Leitura</button>`) + `</div>`
     + and.map(x=>linha(x, true)).join('') + fin.map(x=>linha(x, false)).join('')
-    + (todas.length ? '' : '<p class="hint" style="margin-top:0">Nenhuma leitura ainda.</p>')
-    + `<button class="btn ${and.length ? 'btn-outline' : 'btn-accent'} btn-block" id="lv-iniciar" type="button">${ico('play')}Iniciar ${todas.length ? 'nova ' : ''}leitura</button></div>`;
+    + (todas.length ? '' : '<p class="hint" style="margin-top:0">Nenhuma leitura ainda.</p>') + `</div>`;
 }
 
 async function iniciarLeitura(livroId){
@@ -1997,9 +2007,9 @@ function precosInnerHTML(l){
     const valores = lista.map(p=>p.preco);
     const media = valores.reduce((a,b)=>a+b,0) / valores.length;
     const pago = lista.find(p=>p.comprou);
-    corpo += `<div class="pr-resumo"><div><span>Último</span><b>${fmtMoney(lista[0].preco)}</b></div>`
+    corpo += `<div class="pr-resumo"><div><span>Médio</span><b>${fmtMoney(media)}</b></div>`
       + `<div><span>Menor</span><b>${fmtMoney(Math.min(...valores))}</b></div>`
-      + `<div><span>Média</span><b>${fmtMoney(media)}</b></div>`
+      + `<div><span>Maior</span><b>${fmtMoney(Math.max(...valores))}</b></div>`
       + (pago ? `<div><span>Paguei</span><b>${fmtMoney(pago.preco)}</b></div>` : '') + `</div>`
       + `<div class="hist-seg"><button type="button" data-m="lista" class="${_precoModo==='lista'?'active':''}">Lista</button><button type="button" data-m="grafico" class="${_precoModo==='grafico'?'active':''}">Gráfico</button></div>`;
     corpo += _precoModo==='grafico'
@@ -2138,7 +2148,7 @@ function personagensDoLivro(livroId){ return PERSONAGENS.filter(p=>p.livroId===l
 function anotacoesDaLeitura(leituraId){
   return ANOTACOES.filter(a=>a.leituraId===leituraId).sort((a,b)=> (b.dataHora||'').localeCompare(a.dataHora||'') || b.id-a.id);
 }
-function anotacoesDaPersonagem(pid){ return ANOTACOES.filter(a=>(a.personagemIds||[]).includes(pid)); }
+function anotacoesDaPersonagem(pid, leituraId){ return ANOTACOES.filter(a=>(a.personagemIds||[]).includes(pid) && (leituraId==null || a.leituraId===leituraId)); }
 function nomePersonagem(pid){ const p = PERSONAGENS.find(x=>x.id===pid); return p ? p.nome : '(personagem excluída)'; }
 function historicoAssentar(){ return new Promise(r=> executarAposHistorico(r)); }
 function plural(n, um, varios){ return `${n} ${n===1 ? um : varios}`; }
@@ -2195,7 +2205,7 @@ function desenharPersonagens(id, origem){
   el.innerHTML = `<button class="btn btn-accent btn-block" id="pe-nova" type="button" style="margin-top:14px">+ Nova personagem</button>`
     + `<p class="hint">As personagens são do livro e valem para todas as leituras dele.</p>`
     + (pers.length ? pers.map(p=>{
-        const n = anotacoesDaPersonagem(p.id).length;
+        const n = anotacoesDaPersonagem(p.id, id).length;
         return `<div class="an-card" data-pe="${p.id}"><div class="an-txt"><b>${escapeHtml(p.nome)}</b></div>`
           + (p.comentario ? `<div class="meta" style="white-space:pre-wrap">${escapeHtml(p.comentario.length>140 ? p.comentario.slice(0,140)+'…' : p.comentario)}</div>` : '')
           + `<div class="meta">${n ? plural(n,'anotação','anotações') : 'Sem anotações'}</div></div>`;
@@ -3106,7 +3116,7 @@ document.getElementById('btnImportJson').addEventListener('click', async ()=>{
    ============================================================ */
 fillConfiguracoesForm();
 /* ---- PWA: versão, armazenamento persistente e service worker ---- */
-const APP_VERSION = 'v1_12';
+const APP_VERSION = 'v1_13';
 document.getElementById('appVersaoTxt').textContent = APP_VERSION;
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persist().then(ok=>{
