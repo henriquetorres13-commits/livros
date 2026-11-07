@@ -132,9 +132,10 @@ button{font-family:inherit;cursor:pointer;border:none;}
   justify-content:center;color:var(--ink-soft);font-size:22px;}
 .check-row{display:flex;align-items:center;gap:8px;margin-top:10px;}
 .check-row input{width:auto;}
-/* Sub-janela (sobre o formulário): ocupa a tela inteira */
-#subOverlay{align-items:stretch;background:var(--paper);}
-#subSheet{width:100%;max-height:none;height:100%;border-radius:0;overflow-y:auto;padding-bottom:24px;}
+/* Telas cheias (v1_14): janela principal e sub-janelas ocupam a tela inteira, MENOS a barra inferior, que fica sempre visível.
+   --nav-h é medido em JS (medirNav); o seletor sobreposto, os diálogos e o scanner continuam por cima de tudo. */
+#overlay,#subOverlay,#sub2Overlay{align-items:stretch;background:var(--paper);bottom:var(--nav-h,64px);}
+#sheet,#subSheet,#sub2Sheet{width:100%;max-height:none;height:100%;border-radius:0;overflow-y:auto;padding-bottom:24px;}
 .overlay.top-anchored{align-items:flex-start;}
 .overlay.top-anchored .sheet{height:92vh;border-radius:0 0 16px 16px;}
 
@@ -950,7 +951,7 @@ window.addEventListener('popstate', ()=>{
     else if(scanOverlay.classList.contains('active')) closeScanDom();
     else if(sub2Overlay.classList.contains('active')) closeSub2SheetDom();
     else if(subOverlay.classList.contains('active')) closeSubSheetDom();
-    else if(overlay.classList.contains('active')) closeSheetDom();
+    else if(overlay.classList.contains('active')) voltarTelaPeloHistorico();
   } else {
     navStack.pop();
     switchView(topo.from, {semHistorico:true, restoreY:topo.y});
@@ -1015,6 +1016,68 @@ function criarCamada(overlayId, sheetId){
 const camadaMain = criarCamada('overlay','sheet');
 const camadaSub  = criarCamada('subOverlay','subSheet');
 const camadaSub2 = criarCamada('sub2Overlay','sub2Sheet');
+
+/* ---- Pilha de telas da janela principal (v1_14) ----
+   A janela principal (#sheet) mostra UMA tela por vez (livro, leitura, formulário, autor, local...). Cada tela empilhada por
+   atalho (irPara) ganha uma entrada em navStack/history; o voltar do celular, o X e o "Voltar" desempilham UMA tela e redesenham
+   a anterior com os dados atuais. telaStack guarda, para cada tela, a função que a redesenha.
+   - Tela que se redesenha sozinha (registrar página, finalizar...) chama a própria função: registrarTela troca o topo, não empilha.
+   - Trocar de menu (barra inferior) fecha tudo e zera a pilha (fecharTodasCamadas).
+   - As abas internas da leitura (Progresso/Anotações/Personagens) não entram na pilha. */
+const telaStack = [];
+function registrarTela(fn){ if(telaStack.length) telaStack[telaStack.length-1] = fn; else telaStack.push(fn); }
+function irPara(fn){
+  if(camadaMain.ativa()){
+    telaStack.push(fn);
+    navStack.push({k:'modal'});
+    executarAposHistorico(()=> history.pushState({nav:1}, ''));   // se há history.back() em andamento, espera ele terminar
+  }
+  fn();
+}
+function voltarTela(){            // pedido pelo código: desempilha uma tela (ou fecha, se for a única)
+  if(telaStack.length>1){
+    telaStack.pop();
+    consumeModalHistory();
+    telaStack[telaStack.length-1]();
+  } else camadaMain.fecharAgora();
+}
+function voltarTelaPeloHistorico(){   // o voltar do celular já consumiu a entrada de history
+  if(telaStack.length>1){ telaStack.pop(); telaStack[telaStack.length-1](); }
+  else closeSheetDom();
+}
+const _fecharDomMain = camadaMain.fecharDom;
+camadaMain.fecharDom = function(){ telaStack.length = 0; _fecharDomMain(); };
+camadaMain.fecharAgora = function(){
+  if(telaStack.length>1){ voltarTela(); return; }
+  const wasActive = camadaMain.ativa();
+  camadaMain.fecharDom();
+  if(wasActive) consumeModalHistory();
+};
+/* Remove n entradas de modal da pilha e volta n entradas do history de uma vez (um único popstate, suprimido). */
+function consumirModais(n){
+  let k = 0;
+  while(n-- > 0){
+    const i = navStack.map(e=>e.k).lastIndexOf('modal');
+    if(i<0) break;
+    navStack.splice(i,1); k++;
+  }
+  if(k){ suppressPopstateCount++; history.go(-k); }
+}
+/* Fecha todas as camadas abertas (sub2, sub, principal com toda a sua pilha). Devolve false se o usuário preferiu continuar editando. */
+async function fecharTodasCamadas(){
+  const camadas = [camadaSub2, camadaSub, camadaMain];
+  if(!camadas.some(c=>c.ativa())) return true;
+  if(camadas.some(c=>c.precisaConfirmar())){
+    if(!await camadaMain.confirmarDescarte()) return false;
+    await historicoAssentar();
+  }
+  let entradas = 0;
+  for(const c of [camadaSub2, camadaSub]) if(c.ativa()){ c.fecharDom(); entradas++; }
+  if(camadaMain.ativa()){ entradas += Math.max(1, telaStack.length); camadaMain.fecharDom(); }
+  consumirModais(entradas);
+  await historicoAssentar();
+  return true;
+}
 const overlay = camadaMain.overlay, sheet = camadaMain.sheet;
 const subOverlay = camadaSub.overlay, subSheet = camadaSub.sheet;
 const sub2Overlay = camadaSub2.overlay, sub2Sheet = camadaSub2.sheet;
@@ -1146,9 +1209,23 @@ function renderCurrent(){
   if(currentTab==='exportar') renderBackupInfo();
 }
 
+/* Barra inferior (sempre visível, também sobre telas cheias): trocar de menu fecha as telas abertas e zera a pilha.
+   Com formulário alterado e não salvo, pergunta antes de descartar. */
 document.querySelectorAll('.tab-btn').forEach(btn=>{
-  btn.addEventListener('click', ()=> switchView(btn.dataset.view, {raiz:true}));
+  btn.addEventListener('click', async ()=>{
+    if(!await fecharTodasCamadas()) return;
+    switchView(btn.dataset.view, {raiz:true});
+  });
 });
+/* Altura da barra inferior (inclui a área segura do celular): as telas cheias terminam logo acima dela. */
+function medirNav(){
+  const n = document.querySelector('nav.tabs');
+  if(n && n.offsetHeight) document.documentElement.style.setProperty('--nav-h', n.offsetHeight + 'px');
+}
+medirNav();
+window.addEventListener('load', medirNav);
+window.addEventListener('resize', medirNav);
+window.addEventListener('orientationchange', medirNav);
 document.querySelectorAll('.atalho-btn').forEach(btn=>{
   btn.addEventListener('click', ()=> switchView(btn.dataset.go));   // atalho dentro de tela: empilha
 });
@@ -1527,6 +1604,7 @@ function kv(k, v){ return v ? `<div class="det-kv"><div class="k">${k}</div><div
 function abrirLivro(id){
   const l = LIVROS.find(x=>x.id===id);
   if(!l){ closeSheet(); return; }
+  registrarTela(()=> abrirLivro(id));
   const capa = l.capa ? `<img class="det-capa" src="${l.capa}" alt="">` : `<div class="det-capa-ph">${ico('book')}</div>`;
   const sit = SITUACOES[l.situacao] || 'Próprio';
   openSheet(`<div class="det-barra">
@@ -1555,12 +1633,12 @@ function abrirLivro(id){
   ${l.situacao==='desejo' ? '<button class="btn btn-accent btn-block" id="lv-comprei" type="button" style="margin-top:14px">' + ico('check') + 'Marcar como comprado</button>' : ''}
   `);
   document.getElementById('lv-close').addEventListener('click', ()=> closeSheet());
-  document.getElementById('lv-edit').addEventListener('click', ()=> abrirFormLivro(id));
+  document.getElementById('lv-edit').addEventListener('click', ()=> irPara(()=> abrirFormLivro(id)));
   document.getElementById('lv-del').addEventListener('click', ()=> excluirLivro(id));
   const bi = document.getElementById('lv-iniciar');
   if(bi) bi.addEventListener('click', ()=> iniciarLeitura(id));
   ligarPrecos(id);
-  document.querySelectorAll('#lv-leituras [data-lt]').forEach(el=> el.addEventListener('click', ()=> abrirLeitura(Number(el.dataset.lt), 'livro')));
+  document.querySelectorAll('#lv-leituras [data-lt]').forEach(el=> el.addEventListener('click', ()=> irPara(()=> abrirLeitura(Number(el.dataset.lt), 'livro'))));
   const bc = document.getElementById('lv-comprei');
   if(bc) bc.addEventListener('click', async ()=>{
     if(!await confirmar(`Marcar "${l.titulo}" como comprado?\n\nO livro sai da lista de desejos e passa a aparecer na Biblioteca.`)) return;
@@ -1575,6 +1653,7 @@ function abrirFormLivro(id, situacaoInicial){
   const v = l || {situacao: situacaoInicial || 'proprio'};
   let capa = v.capa || '';
   let autorIds = (v.autorIds||[]).filter(a=> AUTORES.some(x=>x.id===a));
+  registrarTela(()=> abrirFormLivro(id, situacaoInicial));
   openSheet(`<h3>${l ? 'Editar livro' : 'Novo livro'}</h3>
     <div class="form-compacto">
     <label>Título *</label><input type="text" id="lv-titulo" value="${escapeHtml(v.titulo||'')}" autocomplete="off">
@@ -1610,6 +1689,8 @@ function abrirFormLivro(id, situacaoInicial){
       <button class="btn btn-accent" id="lv-save" type="button" style="flex:1">Salvar</button>
     </div>`);
   const $ = x=> document.getElementById(x);
+  /* Sair do formulário (cancelar ou salvar): volta ao detalhe que está embaixo na pilha; sem nada embaixo, abre o detalhe (livro editado) ou fecha (livro novo). */
+  const voltarDoFormLivro = ()=>{ if(l && telaStack.length<=1) abrirLivro(id); else camadaMain.fecharAgora(); };
   const sitSel=$('lv-situacao'), catSel=$('lv-cat'), subSel=$('lv-sub');
   const atualizaEmp = ()=>{ $('lv-emp-wrap').style.display = sitSel.value==='emprestado' ? 'block' : 'none'; };
   const preencheCats = (catId, subId)=>{
@@ -1750,8 +1831,11 @@ function abrirFormLivro(id, situacaoInicial){
     if(id2){ preencheSubs(catId, id2); camadaMain.dirty = true; }
   });
   $('lv-cancel').addEventListener('click', async ()=>{
-    if(camadaMain.precisaConfirmar() && !await camadaMain.confirmarDescarte()) return;
-    if(l) abrirLivro(id); else camadaMain.fecharAgora();
+    if(camadaMain.precisaConfirmar()){
+      if(!await camadaMain.confirmarDescarte()) return;
+      await historicoAssentar();   // o diálogo acabou de fechar: só desempilha a tela quando o history.back() dele terminar
+    }
+    voltarDoFormLivro();
   });
   $('lv-save').addEventListener('click', async ()=>{
     const titulo = $('lv-titulo').value.trim();
@@ -1788,7 +1872,8 @@ function abrirFormLivro(id, situacaoInicial){
     };
     const novoId = await putRecord('livros', reg);
     await reloadAll(); renderCurrent();
-    if(l) abrirLivro(id); else camadaMain.fecharAgora();
+    await historicoAssentar();
+    voltarDoFormLivro();
   });
   setTimeout(()=>{ if(!l) $('lv-titulo').focus(); }, 60);
 }
@@ -1856,14 +1941,16 @@ async function iniciarLeitura(livroId){
   if(em.length && !await confirmar(`Já há uma leitura em andamento de "${l.titulo}" (iniciada em ${fmtDataCurta(em[0].inicio)}).\n\nIniciar outra mesmo assim?`)) return;
   const id = await putRecord('leituras', {livroId, inicio:new Date().toISOString(), fim:null, status:'andamento'});
   await reloadAll(); renderCurrent();
-  abrirLeitura(id, 'livro');
+  irPara(()=> abrirLeitura(id, 'livro'));
 }
 
-/* Tela da leitura (sheet principal). origem: 'livro' (volta ao detalhe) ou 'lista' (aba Leituras: fecha) */
+/* Tela da leitura (sheet principal). origem: 'livro' (voltar leva ao detalhe) ou 'lista' (aba Leituras: voltar fecha);
+   na prática quem decide é a pilha de telas (v1_14), `origem` só muda o rótulo do botão. */
 function abrirLeitura(id, origem){
   const lt = LEITURAS.find(x=>x.id===id);
   const l = lt && LIVROS.find(x=>x.id===lt.livroId);
   if(!lt || !l){ closeSheet(); return; }
+  registrarTela(()=> abrirLeitura(id, origem));
   const and = lt.status==='andamento';
   const pag = paginaAtualLeitura(id), pct = percentualLeitura(lt, l);
   const regs = progressosDaLeitura(id), ult = regs[regs.length-1];
@@ -1897,7 +1984,7 @@ function abrirLeitura(id, origem){
       <div id="lt-pane-personagens" style="display:none"></div>
     </div>`);
   const $ = x=> document.getElementById(x);
-  $('lt-close').addEventListener('click', ()=>{ if(origem==='livro') abrirLivro(l.id); else closeSheet(); });
+  $('lt-close').addEventListener('click', ()=> closeSheet());   // desempilha: volta ao livro (se veio dele) ou fecha
   $('lt-del').addEventListener('click', ()=> excluirLeitura(id, origem));
   if(_histLeitura !== id){ _histLeitura = id; _histModo = 'grafico'; _ltAba = 'progresso'; _anotFiltro = null; }   // cada leitura abre no gráfico, na aba Progresso
   desenharHistorico(id, origem);
@@ -1957,7 +2044,8 @@ async function excluirLeitura(id, origem){
   for(const a of anots) await deleteRecord('anotacoes', a.id);
   await deleteRecord('leituras', id);
   await reloadAll(); renderCurrent();
-  if(origem==='livro') abrirLivro(l.id); else closeSheet();
+  await historicoAssentar();
+  closeSheet();   // desempilha: volta ao livro (já sem a leitura) ou fecha
 }
 
 /* ============================================================
@@ -2108,6 +2196,7 @@ function renderLocais(){
 function abrirFormLocal(id){
   const x = id ? LOCAIS.find(l=>l.id===id) : null;
   if(id && !x) return;
+  registrarTela(()=> abrirFormLocal(id));
   openSheet(`<h3>${x ? 'Editar local' : 'Novo local'}</h3>
     <label>Nome *</label><input type="text" id="lc-nome" value="${escapeHtml(x ? x.nome : '')}" placeholder="Ex: Livraria da Vila" autocomplete="off">
     <label>Observação</label><textarea id="lc-obs" placeholder="Endereço, site, observações">${escapeHtml(x ? (x.obs||'') : '')}</textarea>
@@ -2751,11 +2840,12 @@ function abrirAutor(id){
   const a = AUTORES.find(x=>x.id===id);
   if(!a){ closeSheet(); return; }
   const lista = livrosDoAutor(id).sort((x,y)=> x.titulo.localeCompare(y.titulo, 'pt-BR'));
+  registrarTela(()=> abrirAutor(id));
   openSheet(`<h3>${escapeHtml(a.nome)}</h3>`
     + (lista.length ? `<div class="livros-lista">${lista.map(livroItemHTML).join('')}</div>` : '<div class="vazio">Nenhum livro deste autor.</div>')
     + `<div class="sheet-actions"><button class="btn btn-outline" id="au-close" type="button" style="flex:1">Fechar</button></div>`);
   document.getElementById('au-close').addEventListener('click', ()=> closeSheet());
-  sheet.querySelectorAll('.livro-item').forEach(it=> it.addEventListener('click', ()=> abrirLivro(Number(it.dataset.id))));
+  sheet.querySelectorAll('.livro-item').forEach(it=> it.addEventListener('click', ()=> irPara(()=> abrirLivro(Number(it.dataset.id)))));
 }
 document.getElementById('btnNovoAutor').addEventListener('click', async ()=>{
   const r = await perguntar('Nome do novo autor:', '');
@@ -3116,7 +3206,7 @@ document.getElementById('btnImportJson').addEventListener('click', async ()=>{
    ============================================================ */
 fillConfiguracoesForm();
 /* ---- PWA: versão, armazenamento persistente e service worker ---- */
-const APP_VERSION = 'v1_13';
+const APP_VERSION = 'v1_14';
 document.getElementById('appVersaoTxt').textContent = APP_VERSION;
 if(navigator.storage && navigator.storage.persist){
   navigator.storage.persist().then(ok=>{
